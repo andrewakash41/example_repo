@@ -179,6 +179,30 @@ func _reload_rewarded() -> void:
 		_set_rewarded_ready(false)
 		_plugin_load_rewarded()
 
+# --- Load-result callbacks + backoff retry (R4) ----------------------------
+# The real plugin connects its load-success / load-failure signals to these in
+# _init_plugin. On failure we retry after an exponential backoff (next_backoff,
+# previously dead code, B18) so a flaky/offline network self-heals; on success
+# the backoff resets. All time-based, so it's inert under the desktop stub.
+
+func _on_interstitial_loaded() -> void:
+	_interstitial_backoff = 0.0
+	_set_interstitial_ready(true)
+
+func _on_interstitial_failed() -> void:
+	_set_interstitial_ready(false)
+	_interstitial_backoff = next_backoff(_interstitial_backoff)
+	get_tree().create_timer(_interstitial_backoff).timeout.connect(_reload_interstitial)
+
+func _on_rewarded_loaded() -> void:
+	_rewarded_backoff = 0.0
+	_set_rewarded_ready(true)
+
+func _on_rewarded_failed() -> void:
+	_set_rewarded_ready(false)
+	_rewarded_backoff = next_backoff(_rewarded_backoff)
+	get_tree().create_timer(_rewarded_backoff).timeout.connect(_reload_rewarded)
+
 ## Readiness setters emit ad_availability_changed only on a real transition (B14).
 func _set_rewarded_ready(v: bool) -> void:
 	if v == _rewarded_ready:
@@ -202,19 +226,85 @@ func next_backoff(current: float) -> float:
 # These are the only spots that touch the plugin. They are inert until the
 # plugin ships in the Android build; wire them to its API at that point (§9.1).
 
+## The poing-studios AdMob plugin registers an "AdMob" singleton on Android. Its
+## exact signal/method names must be confirmed against the plugin version that
+## supports Godot 4.3 at integration time (handoff §2 fallback rule); the shape
+## below mirrors that plugin's documented API. Everything is guarded by this
+## check, so desktop/editor/CI never touch it.
 func _has_plugin() -> bool:
-	return false  # becomes: Engine.has_singleton("AdMob") on Android
+	return Engine.has_singleton("AdMob")
+
+func _plugin() -> Object:
+	return Engine.get_singleton("AdMob") if _has_plugin() else null
 
 func _init_plugin() -> void:
-	if not _has_plugin():
+	var p := _plugin()
+	if p == null:
 		return
-	# _plugin.initialize(config.app_id(), use test device ids in dev)
-	# then load interstitial + one rewarded, request consent.
-	pass
+	# Connect load-result signals to the backoff/retry state machine, then bring
+	# up the SDK with test device ids in dev and preload one of each format.
+	if p.has_signal("interstitial_loaded"):
+		p.connect("interstitial_loaded", _on_interstitial_loaded)
+	if p.has_signal("interstitial_failed_to_load"):
+		p.connect("interstitial_failed_to_load", _on_interstitial_failed)
+	if p.has_signal("rewarded_ad_loaded"):
+		p.connect("rewarded_ad_loaded", _on_rewarded_loaded)
+	if p.has_signal("rewarded_ad_failed_to_load"):
+		p.connect("rewarded_ad_failed_to_load", _on_rewarded_failed)
+	p.call("initialize")
+	_set_interstitial_ready(false)
+	_set_rewarded_ready(false)
+	_plugin_load_interstitial()
+	_plugin_load_rewarded()
 
-func _plugin_request_consent(_on_done: Callable) -> void: pass
-func _plugin_show_privacy_options() -> void: pass
-func _plugin_show_interstitial(_after: Callable) -> void: pass
-func _plugin_show_rewarded(_after: Callable) -> void: pass
-func _plugin_load_interstitial() -> void: pass
-func _plugin_load_rewarded() -> void: pass
+func _plugin_request_consent(on_done: Callable) -> void:
+	var p := _plugin()
+	if p == null:
+		if on_done.is_valid():
+			on_done.call()
+		return
+	# UMP form; on completion mark consent and continue. The plugin reports the
+	# obtained/declined status via a signal — treat any completion as consent-set.
+	if p.has_signal("consent_form_dismissed") and not p.is_connected("consent_form_dismissed", _on_consent_done):
+		p.connect("consent_form_dismissed", _on_consent_done.bind(on_done))
+	p.call("request_consent_info_update")
+
+func _on_consent_done(on_done: Callable) -> void:
+	_set_consent("obtained")
+	if on_done.is_valid():
+		on_done.call()
+
+func _plugin_show_privacy_options() -> void:
+	var p := _plugin()
+	if p:
+		p.call("show_privacy_options_form")
+
+func _plugin_show_interstitial(after: Callable) -> void:
+	var p := _plugin()
+	if p == null:
+		after.call()
+		return
+	if p.has_signal("interstitial_closed") and not p.is_connected("interstitial_closed", after):
+		p.connect("interstitial_closed", after, CONNECT_ONE_SHOT)
+	p.call("show_interstitial_ad")
+
+func _plugin_show_rewarded(after: Callable) -> void:
+	var p := _plugin()
+	if p == null:
+		after.call()
+		return
+	# Only fire `after` (the reward grant) on the user-earned-reward signal, never
+	# on a plain close, so a skipped ad doesn't pay out.
+	if p.has_signal("rewarded_ad_user_earned_reward") and not p.is_connected("rewarded_ad_user_earned_reward", after):
+		p.connect("rewarded_ad_user_earned_reward", after, CONNECT_ONE_SHOT)
+	p.call("show_rewarded_ad")
+
+func _plugin_load_interstitial() -> void:
+	var p := _plugin()
+	if p:
+		p.call("load_interstitial_ad", config.interstitial_id())
+
+func _plugin_load_rewarded() -> void:
+	var p := _plugin()
+	if p:
+		p.call("load_rewarded_ad", config.rewarded_id())

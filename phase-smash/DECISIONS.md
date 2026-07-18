@@ -290,3 +290,24 @@ except for the new per-level Fever threshold.
   blue/green) with a pop tween.
 - **D7 — screenshot/trailer recapture DEFERRED** — needs the engine + final assets
   (fonts/audio) on a device; tracked with the existing P7 store shot list.
+
+## R4 — ship blockers (code done; device/release pending)
+
+- **AdMob backoff/retry wired:** `next_backoff` is now live (was dead, B18).
+  Load-failure callbacks (`_on_{rewarded,interstitial}_failed`) schedule a reload
+  after an exponential 5s→60s backoff; success resets it. All time-based, inert
+  under the desktop stub.
+- **Plugin integration seam fleshed out:** `_has_plugin()` now checks
+  `Engine.has_singleton("AdMob")`; `_init_plugin` connects the poing-studios
+  load/close/earned-reward signals; show/load hooks call the singleton with the
+  configured unit ids. **Signal/method names must be confirmed** against the
+  plugin version that supports Godot 4.3 at integration time (handoff §2 fallback).
+  Rewarded payout is bound to the *earned-reward* signal only, never a plain close.
+- **targetSdk:** Google Play's floor ratchets annually; as of mid-2026 new apps
+  need **API 35 (Android 15)**. Set `target_sdk`/`min_sdk` in the export preset at
+  build time and re-check the current floor then (still intentionally blank in the
+  committed `.example`, per the P7 note).
+- **Device-only, still open (need Godot 4.3 + Android + a phone):** real UMP consent
+  flow, every placement with Google test ids, airplane-mode behavior, on-device
+  profiling of B2/B3 (draw calls, p95 frame time, 50-level memory soak), signed AAB
+  build, and the release-pack asset refresh.
