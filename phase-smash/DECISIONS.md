@@ -109,3 +109,30 @@ rationale each. Newest at top within a phase.
 - **Syntax verified with gdtoolkit 4.5** (`gdparse`) across all 20 scripts;
   semantic/API correctness of the new particle + sky calls still needs a first
   editor run (engine not runnable here).
+
+## P4 — Meta-game & persistence
+
+- **Save is atomic-ish** (write `save.json.tmp`, remove old, rename) with a
+  version + `migrate()` stub and recursive `merge_defaults()` for forward-compat
+  when the schema grows. A corrupt file is copied to `save.bak`, a fresh save is
+  written, and `recovered` is emitted (§8.3). Persisted on level clear, booster/
+  skin/settings change, crate open, and app pause.
+- **Pure logic split out for testing**: `parse_save`/`migrate`/`merge_defaults`
+  (SaveManager) and all of `Boosters`/`Crates` operate on a plain dict, so they
+  run without a scene. Verified — crate weighting lands at **60/30/10**
+  (±0.1% over 200k draws), 5 shards mint a skin, all-owned crates fall back
+  safely, and merge preserves+fills. Mirrored as GDScript suites in
+  `tests/test_save.gd` and `tests/test_crates.gd`.
+- **`opposite`/skin readability**: the ball's *albedo* keeps the equipped skin's
+  identity while *emission* always carries the phase color, so phase stays
+  readable on all 12 skins (§7.3).
+- **Head Start** clears the top 25% of the tower by marking those segments
+  broken and dropping the ball in below (§7.1). **Slow-Mo** multiplies tower
+  rotation by 0.7. **Shield** survives one obsidian smash, then pops.
+- **The 50 authored levels remain a curve, not `.tres` files** (see P2). Screens
+  (pre-level, skins gallery, settings, crate open) are built in code like the
+  rest of the UI; a visual-design pass is future polish.
+- **Full project (30 scripts) passes gdtoolkit 4.5 `gdparse`.** Semantic/API
+  correctness and the actual feel still need a first Godot editor run — the
+  engine was not installable in this environment (egress policy blocked the
+  download).

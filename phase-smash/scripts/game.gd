@@ -104,6 +104,11 @@ var _lite := false            # effective Lite FX (setting or auto)
 var _auto_lite := false
 var _frame_over_timer := 0.0
 
+# Boosters / skin (§7)
+var _shield := false
+var _slow_mo_mult := 1.0
+var _skin
+
 func set_router(router: Node) -> void:
 	_router = router
 
@@ -121,6 +126,14 @@ func _ready() -> void:
 
 	_theme = ThemesScript.get_theme(_level.theme_id)
 	_lite = bool(SaveManager.data["settings"].get("lite_fx", false))
+	Haptics.enabled = bool(SaveManager.data["settings"].get("haptics", true))
+	_skin = Skins.get_skin(SaveManager.data["equipped_skin"])
+
+	# Consume equipped boosters at level start and apply their effects (§7.1).
+	var active := Boosters.consume_equipped(SaveManager.data)
+	_shield = active.has("shield")
+	_slow_mo_mult = Boosters.SLOW_MO_FACTOR if active.has("slow_mo") else 1.0
+	SaveManager.save_game()
 
 	_setup_environment()
 	_build_materials()
@@ -131,8 +144,24 @@ func _ready() -> void:
 	_apply_phase_visuals()
 
 	_ball_y = _platform_y(0) + START_DROP_GAPS * PLATFORM_GAP
+	if active.has("head_start"):
+		_apply_head_start()
 	_cam_look_y = _ball_y
 	GameState.start_level(_level.level_number)
+
+## Auto-clears the top fraction of the tower (§7.1). Segments there are removed
+## as if already smashed; the ball starts just below the cleared band.
+func _apply_head_start() -> void:
+	var cut := int(_platform_count * Boosters.HEAD_START_FRACTION)
+	for i in cut:
+		for s in _segment_count:
+			if _seg_kind[i][s] != PSTypes.Seg.GAP and not _broken[i][s]:
+				_broken[i][s] = true
+				var node: MeshInstance3D = _seg_nodes[i][s]
+				if node and is_instance_valid(node):
+					node.queue_free()
+					_seg_nodes[i][s] = null
+	_ball_y = _platform_y(cut) + START_DROP_GAPS * PLATFORM_GAP
 
 # --- Construction -----------------------------------------------------------
 
@@ -197,7 +226,7 @@ func _build_tower() -> void:
 	_tower.name = "Tower"
 	add_child(_tower)
 
-	var base_speed := deg_to_rad(_level.rotation_speed_deg)
+	var base_speed := deg_to_rad(_level.rotation_speed_deg) * _slow_mo_mult
 	_broken.clear()
 	_seg_nodes.clear()
 	_platform_nodes.clear()
@@ -267,6 +296,7 @@ func _build_ball() -> void:
 	mesh.height = BALL_RADIUS * 2.0
 	_ball.mesh = mesh
 	_ball_mat = _emissive(PSTypes.AMBER_COLOR, 0.9)
+	_ball_mat.metallic = _skin.metallic
 	_ball.material_override = _ball_mat
 	_ball.position = Vector3(RING_MID, 0, 0)
 	add_child(_ball)
@@ -448,6 +478,10 @@ func _resolve_descent(prev_bottom: float, new_bottom: float, smashing: bool) -> 
 			_shatter(i, seg_index, kind)
 			continue
 		if kind == PSTypes.Seg.OBSIDIAN:
+			if _shield:
+				_pop_shield()
+				_shatter(i, seg_index, kind)
+				continue
 			_die()
 			return
 		if PSTypes.is_matching(kind, _phase):
@@ -496,6 +530,13 @@ func _end_hit_stop() -> void:
 
 func _combo_mult() -> float:
 	return clampf(1.0 + float(_chain) / 10.0, 1.0, 5.0)
+
+func _pop_shield() -> void:
+	_shield = false
+	_shake = maxf(_shake, SHAKE_FEVER)
+	_hud.flash(Color(0.4, 0.8, 1.0), 0.4)
+	Haptics.medium()
+	AudioManager.play_sfx(&"hard_bounce")
 
 # --- Death / revive ---------------------------------------------------------
 
@@ -563,12 +604,16 @@ func _on_level_clear() -> void:
 	_cleared = true
 	_ball.visible = true
 	_ball.position.y = _finish_y() + BALL_RADIUS + 0.15
+	var cleared_level := GameState.current_level
 	GameState.clear_level()
-	SaveManager.record_best_score(GameState.current_level, GameState.run_score)
+	SaveManager.record_best_score(cleared_level, GameState.run_score)
 	SaveManager.data["lifetime"]["levels_cleared"] += 1
 	# +1 crate progress normally; a boss clear grants an instant crate (§7.2).
 	var gain := 5 if _level.is_boss else 1
 	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + gain
+	Boosters.on_level_clear(SaveManager.data)  # periodic free shield (§7.1)
+	GameState.advance_level()                  # unlock the next level
+	SaveManager.save_game()                    # persist on level clear (§8.3)
 	Haptics.heavy()
 	AudioManager.play_sfx(&"level_clear")
 	if _confetti:
@@ -576,8 +621,8 @@ func _on_level_clear() -> void:
 		_confetti.emitting = true
 	_shake = SHAKE_FEVER
 	_hud.flash(Color(0.4, 1, 0.7), 0.4)
-	_hud.show_level_clear(GameState.current_level, GameState.run_score,
-		SaveManager.get_best_score(GameState.current_level))
+	_hud.show_level_clear(cleared_level, GameState.run_score,
+		SaveManager.get_best_score(cleared_level))
 
 # --- Visuals / HUD ----------------------------------------------------------
 
@@ -585,9 +630,11 @@ func _apply_phase_visuals() -> void:
 	var c := PSTypes.phase_color(_phase)
 	if _fever:
 		c = Color(1, 0.95, 0.85)
-	_ball_mat.albedo_color = c
+	# Albedo keeps the skin's identity; emission carries the phase color so
+	# readability survives on every skin (§7.3).
+	_ball_mat.albedo_color = _skin.base.lerp(c, 0.4) if _skin else c
 	_ball_mat.emission = c
-	_ball_mat.emission_energy_multiplier = 1.4 if _fever else 0.9
+	_ball_mat.emission_energy_multiplier = (1.4 if _fever else 0.9) * (_skin.emission_energy if _skin else 1.0)
 	_ball_light.light_color = c
 	if _trail and _trail.process_material:
 		var pm := _trail.process_material as ParticleProcessMaterial
@@ -635,11 +682,19 @@ func _on_home() -> void:
 		_router.go_to_home()
 
 func _on_replay() -> void:
+	# After a clear the level was already advanced (§ _on_level_clear), so NEXT
+	# just reloads at the new current level; after a game over it retries the same.
 	Engine.time_scale = 1.0
-	if _cleared:
-		GameState.advance_level()
 	if _router and _router.has_method("go_to_game"):
 		_router.go_to_game()
+
+## Auto-pause + persist when the app loses focus (§8.2 / §8.3): never die to a
+## phone call, and never lose progress on a kill.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		SaveManager.save_game()
+		if _state == State.PLAY:
+			_holding = false
 
 # --- Helpers ----------------------------------------------------------------
 

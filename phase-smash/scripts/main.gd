@@ -1,26 +1,34 @@
 extends Node
-## Thin root that swaps Home <-> Game (§8.2). Never reloads mid-run; overlays
-## inside Game are CanvasLayers so the revive flow can resume in place later.
+## Thin root that swaps whole screens (§8.2). Overlays inside Game are its own
+## CanvasLayers so a run is never reloaded mid-play. Screens get a back-reference
+## via set_router() and call the go_to_* methods below.
 
-const HOME_SCENE := preload("res://scenes/home.tscn")
-const GAME_SCENE := preload("res://scenes/game.tscn")
+const SCENES := {
+	"home": "res://scenes/home.tscn",
+	"prelevel": "res://scenes/prelevel.tscn",
+	"game": "res://scenes/game.tscn",
+	"skins": "res://scenes/skins.tscn",
+	"settings": "res://scenes/settings.tscn",
+	"crate": "res://scenes/crate.tscn",
+}
 
 var _current: Node
 
 func _ready() -> void:
 	go_to_home()
 
-func go_to_home() -> void:
-	_swap(HOME_SCENE)
+func go_to_home() -> void: _swap("home")
+func go_to_prelevel() -> void: _swap("prelevel")
+func go_to_game() -> void: _swap("game")
+func go_to_skins() -> void: _swap("skins")
+func go_to_settings() -> void: _swap("settings")
+func go_to_crate() -> void: _swap("crate")
 
-func go_to_game() -> void:
-	_swap(GAME_SCENE)
-
-func _swap(scene: PackedScene) -> void:
+func _swap(key: String) -> void:
 	if _current and is_instance_valid(_current):
 		_current.queue_free()
+	var scene: PackedScene = load(SCENES[key])
 	_current = scene.instantiate()
 	add_child(_current)
-	# Give scenes a back-reference to the router without a hard dependency.
 	if _current.has_method("set_router"):
 		_current.set_router(self)

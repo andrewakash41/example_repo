@@ -9,13 +9,11 @@ func _initialize() -> void:
 	var failed_total := 0
 
 	print("\n=== Tests ===")
-	var res := TestTowerGenerator.run()
-	var passed: int = res[0]
-	var failed: int = res[1]
-	for line in res[2]:
-		print("  ", line)
-	print("  -> %d passed, %d failed" % [passed, failed])
-	failed_total += failed
+	for res in [TestTowerGenerator.run(), TestSave.run(), TestCrates.run()]:
+		for line in res[2]:
+			print("  ", line)
+		print("  -> %d passed, %d failed" % [res[0], res[1]])
+		failed_total += int(res[1])
 
 	print("\n=== Difficulty report (harness bot, 20 runs/level) ===")
 	print("  lvl  boss  clear%  attempts  dur(s)  obs_deaths")

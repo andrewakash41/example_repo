@@ -9,6 +9,29 @@ See [`../PHASE_SMASH_HANDOFF.md`](../PHASE_SMASH_HANDOFF.md) for the full design
 and the milestone plan (P0–P7). Executor decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
+## Status — P4 (Meta-game & persistence)
+
+On top of P3:
+
+- **Persistence**: atomic JSON save at `user://save.json`, versioned with a
+  migration stub, forward-compatible key merge, and corrupt-file recovery
+  (backup + fresh + toast signal). Saves on clear, purchase/equip, settings, and
+  app pause.
+- **Boosters** (Shield / Slow-Mo / Head Start): equip on the pre-level screen,
+  consumed on use, capped at 9, with a free shield every 5 clears.
+- **Crates**: progress per clear, weighted rewards (60% shard / 30% booster /
+  10% jackpot), 5 shards mint a skin, boss clears grant an instant crate.
+- **12 skins**: gallery + equip; phase color always tints the skin for
+  readability.
+- **Screens**: Home, Pre-level, Skins gallery, Settings, Crate open, plus the
+  in-game HUD/overlays.
+- **Tests**: `tests/test_save.gd`, `tests/test_crates.gd` (+ generator tests) in
+  the headless runner.
+
+Meta-game logic (crate weighting 60/30/10, shard→skin, save round-trip +
+recovery) verified via standalone sims; a Godot editor run is still needed to
+confirm the scene/particle wiring and feel.
+
 ## Status — P3 (Art, juice, audio)
 
 On top of P2:
