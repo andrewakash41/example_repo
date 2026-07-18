@@ -9,19 +9,21 @@ const ShatterPoolScript := preload("res://scripts/shatter.gd")
 const HudScript := preload("res://scripts/hud.gd")
 
 # --- Tuning (§4) ------------------------------------------------------------
-const PLATFORM_GAP := 0.9
-const PLATFORM_THICKNESS := 0.25
+# Physics constants shared with the harness bot come from SimParams (C1) so the
+# two can never drift; view-only constants (ring geometry) stay local.
+const PLATFORM_GAP := SimParams.PLATFORM_GAP
+const PLATFORM_THICKNESS := SimParams.PLATFORM_THICKNESS
 const RING_INNER := 0.5
 const RING_OUTER := 2.4
 const RING_MID := (RING_INNER + RING_OUTER) * 0.5
-const BALL_RADIUS := 0.35
+const BALL_RADIUS := SimParams.BALL_RADIUS
 
-const SMASH_ACCEL := 150.0
-const SMASH_TERMINAL := 22.0
-const GRAVITY_IDLE := 40.0
-const IDLE_BOUNCE_HEIGHT := 1.0
-const HARD_BOUNCE_GAPS := 1.5
-const START_DROP_GAPS := 3.0
+const SMASH_ACCEL := SimParams.SMASH_ACCEL
+const SMASH_TERMINAL := SimParams.SMASH_TERMINAL
+const GRAVITY_IDLE := SimParams.GRAVITY_IDLE
+const IDLE_BOUNCE_HEIGHT := SimParams.IDLE_BOUNCE_HEIGHT
+const HARD_BOUNCE_GAPS := SimParams.HARD_BOUNCE_GAPS
+const START_DROP_GAPS := SimParams.START_DROP_GAPS
 
 # Windowed tower view (§8.4, B2): only the platforms near the ball have live
 # nodes. WINDOW_BELOW must stay well ahead of the fastest descent so a platform
@@ -30,9 +32,9 @@ const START_DROP_GAPS := 3.0
 const WINDOW_ABOVE := 4
 const WINDOW_BELOW := 14
 
-const INPUT_LOCK := 0.2
+const INPUT_LOCK := SimParams.INPUT_LOCK
 const FEVER_THRESHOLD_DEFAULT := 10  # fallback; per-level value comes from LevelData (B9)
-const FEVER_GRACE := 1.5
+const FEVER_GRACE := SimParams.FEVER_GRACE
 const BASE_FOV := 60.0
 const SMASH_FOV_KICK := 3.0
 const FEVER_FOV_KICK := 5.0
@@ -41,7 +43,7 @@ const REVIVE_SECONDS := 5
 const INVULN := 1.5
 const DEATH_SLOWMO_SCALE := 0.4
 const DEATH_SLOWMO_TIME := 0.4
-const BOSS_BAND_SIZE := 5
+const BOSS_BAND_SIZE := SimParams.BOSS_BAND_SIZE
 
 # Juice (§6.3)
 const SHAKE_DECAY := 0.9

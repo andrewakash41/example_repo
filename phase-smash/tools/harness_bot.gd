@@ -6,21 +6,23 @@ extends RefCounted
 ## causes). This substitutes for playtesting at scale — Opus tunes level data
 ## against these reports until the §5.3 curve targets hold.
 ##
-## The physics/interaction here mirror game.gd. Constants are duplicated with a
-## sync note rather than pulled from the Node script to keep the sim decoupled.
+## The physics/interaction here mirror game.gd. Shared constants come from
+## SimParams (C1) so the bot cannot drift from the live game.
 
 const DT := 1.0 / 60.0
-const PLATFORM_GAP := 0.9
-const PLATFORM_THICKNESS := 0.25
-const BALL_RADIUS := 0.35
-const SMASH_ACCEL := 150.0
-const SMASH_TERMINAL := 22.0
-const GRAVITY_IDLE := 40.0
-const IDLE_BOUNCE_HEIGHT := 1.0
-const HARD_BOUNCE_GAPS := 1.5
-const START_DROP_GAPS := 3.0
-const INPUT_LOCK := 0.2
-const BOSS_BAND_SIZE := 5
+# Physics constants come from SimParams (C1) so the bot can never drift from the
+# live game — its whole value is being a faithful stand-in for real play.
+const PLATFORM_GAP := SimParams.PLATFORM_GAP
+const PLATFORM_THICKNESS := SimParams.PLATFORM_THICKNESS
+const BALL_RADIUS := SimParams.BALL_RADIUS
+const SMASH_ACCEL := SimParams.SMASH_ACCEL
+const SMASH_TERMINAL := SimParams.SMASH_TERMINAL
+const GRAVITY_IDLE := SimParams.GRAVITY_IDLE
+const IDLE_BOUNCE_HEIGHT := SimParams.IDLE_BOUNCE_HEIGHT
+const HARD_BOUNCE_GAPS := SimParams.HARD_BOUNCE_GAPS
+const START_DROP_GAPS := SimParams.START_DROP_GAPS
+const INPUT_LOCK := SimParams.INPUT_LOCK
+const BOSS_BAND_SIZE := SimParams.BOSS_BAND_SIZE
 const TIMEOUT_S := 90.0
 
 ## Runs `runs` attempts and returns aggregate stats for one level.
@@ -104,7 +106,7 @@ static func _play_once(level: LevelData, rng: RandomNumberGenerator, latency_s: 
 		# Fever grace.
 		if fever:
 			if eff_hold:
-				fever_grace = 1.5
+				fever_grace = SimParams.FEVER_GRACE
 			else:
 				fever_grace -= DT
 				if fever_grace <= 0.0:
@@ -137,14 +139,14 @@ static func _play_once(level: LevelData, rng: RandomNumberGenerator, latency_s: 
 					# keeps the run in Fever (the old `if chain >= FEVER_THRESHOLD:
 					# fever = true` here was a no-op — fever is already true) (B13).
 					broken[key] = true; chain += 1
-					fever_grace = 1.5
+					fever_grace = SimParams.FEVER_GRACE
 					continue
 				if kind == PSTypes.Seg.OBSIDIAN:
 					return {"cleared": false, "cause": "obsidian", "duration": t}
 				if PSTypes.is_matching(kind, phase):
 					broken[key] = true; chain += 1
 					if not fever and chain >= fever_threshold:
-						fever = true; fever_grace = 1.5
+						fever = true; fever_grace = SimParams.FEVER_GRACE
 					continue
 				# opposite -> hard bounce
 				ball_y = y_top + BALL_RADIUS

@@ -15,7 +15,7 @@ func on_back_requested() -> void:
 		get_tree().quit()
 	else:
 		_last_back_ms = now
-		_toast("Press back again to exit")
+		_toast(Strings.t("home_exit_toast"))
 
 func _toast(text: String) -> void:
 	var l := UIKit.label(text, 26, Color(1, 1, 1, 0.85))
@@ -35,10 +35,10 @@ func _ready() -> void:
 	UIKit.fill_bg(self, Color(0.06, 0.04, 0.12))
 	var box := UIKit.center_box(self, 26)
 
-	box.add_child(UIKit.label("PHASE SMASH", 68, Color(1, 0.54, 0.12)))
-	box.add_child(UIKit.label("Level %d" % SaveManager.data["highest_level"], 30, Color(0.12, 0.78, 1)))
+	box.add_child(UIKit.label(Strings.t("app_title"), 68, Color(1, 0.54, 0.12)))
+	box.add_child(UIKit.label(Strings.f("home_level", [SaveManager.data["highest_level"]]), 30, Color(0.12, 0.78, 1)))
 
-	var play := UIKit.button("PLAY", 48, _on_play, Vector2(320, 118))
+	var play := UIKit.button(Strings.t("btn_play"), 48, _on_play, Vector2(320, 118))
 	play.pivot_offset = Vector2(160, 59)
 	box.add_child(play)
 	var tw := create_tween().set_loops()
@@ -49,16 +49,16 @@ func _ready() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 18)
 	box.add_child(row)
-	row.add_child(UIKit.button("Skins", 30, _on_skins, Vector2(180, 78)))
-	row.add_child(UIKit.button("Settings", 30, _on_settings, Vector2(180, 78)))
+	row.add_child(UIKit.button(Strings.t("btn_skins"), 30, _on_skins, Vector2(180, 78)))
+	row.add_child(UIKit.button(Strings.t("btn_settings"), 30, _on_settings, Vector2(180, 78)))
 
 	var progress := int(SaveManager.data["crate_progress"])
 	if Crates.can_open(SaveManager.data):
-		var crate := UIKit.button("OPEN CRATE!", 32, _on_crate, Vector2(300, 84))
+		var crate := UIKit.button(Strings.t("home_open_crate"), 32, _on_crate, Vector2(300, 84))
 		crate.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
 		box.add_child(crate)
 	else:
-		box.add_child(UIKit.label("Crate  %d / %d" % [progress, Crates.CRATE_COST], 26, Color(1, 1, 1, 0.7)))
+		box.add_child(UIKit.label(Strings.f("home_crate_progress", [progress, Crates.CRATE_COST]), 26, Color(1, 1, 1, 0.7)))
 
 	AudioManager.play_music(&"menu")
 

@@ -13,20 +13,20 @@ func on_back_requested() -> void:
 func _ready() -> void:
 	UIKit.fill_bg(self, Color(0.06, 0.04, 0.12))
 	var box := UIKit.center_box(self, 18)
-	box.add_child(UIKit.label("SETTINGS", 52, Color(0.9, 0.9, 1)))
+	box.add_child(UIKit.label(Strings.t("settings_title"), 52, Color(0.9, 0.9, 1)))
 
-	_toggle(box, "Music", "music")
-	_toggle(box, "SFX", "sfx")
-	_toggle(box, "Haptics", "haptics")
-	_toggle(box, "Lite FX", "lite_fx")
+	_toggle(box, Strings.t("settings_music"), "music")
+	_toggle(box, Strings.t("settings_sfx"), "sfx")
+	_toggle(box, Strings.t("settings_haptics"), "haptics")
+	_toggle(box, Strings.t("settings_lite_fx"), "lite_fx")
 
 	# Privacy options — re-open the UMP consent form (§9.1).
-	box.add_child(UIKit.button("Privacy options", 26, _on_privacy, Vector2(300, 70)))
+	box.add_child(UIKit.button(Strings.t("settings_privacy"), 26, _on_privacy, Vector2(300, 70)))
 
 	var version := str(ProjectSettings.get_setting("application/config/version", "0.0"))
-	box.add_child(UIKit.label("Phase Smash — v%s" % version, 22, Color(1, 1, 1, 0.5)))
-	box.add_child(UIKit.label("Audio: CC0/CC-BY — see credits", 20, Color(1, 1, 1, 0.4)))
-	box.add_child(UIKit.button("Back", 28, _on_back, Vector2(200, 72)))
+	box.add_child(UIKit.label(Strings.f("settings_version", [version]), 22, Color(1, 1, 1, 0.5)))
+	box.add_child(UIKit.label(Strings.t("settings_audio_credit"), 20, Color(1, 1, 1, 0.4)))
+	box.add_child(UIKit.button(Strings.t("btn_back"), 28, _on_back, Vector2(200, 72)))
 
 func _on_privacy() -> void:
 	AudioManager.play_sfx(&"ui_tap")

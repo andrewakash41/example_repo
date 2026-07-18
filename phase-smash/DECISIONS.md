@@ -249,3 +249,23 @@ except for the new per-level Fever threshold.
   warning; true angular-fill shader is a later polish item), B13 harness fever
   no-op removed, B15 "Open another" crate, B16 skins ScrollContainer + in-place
   refresh + locked preview, B17 bottom safe-area inset, B18 dead code removed.
+
+## R2 — refactors (C1, C5 done; C2/C3 deferred; C4 → R3)
+
+- **C1 — SimParams:** the ~15 physics constants game.gd and harness_bot.gd
+  duplicated now live in `scripts/sim_params.gd`; both alias them (values in one
+  place, names stay local so gameplay reads unchanged). Directly kills the drift
+  class that produced B9/B13.
+- **C5 — Strings:** `scripts/strings.gd` holds a flat `const S` of player-facing
+  text with `t()`/`f()` helpers (i18n-ready). Home + Settings migrated as the
+  adoption pattern; remaining screens can migrate incrementally against the same keys.
+- **C2 (extract ball_sim) and C3 (split game.gd) DEFERRED — needs an engine.**
+  Both are "behavior-identical" refactors whose sole acceptance is the harness
+  difficulty report being unchanged before/after. That report can't run here
+  (no Godot). Unlike new features, a silent error in these would regress the whole
+  working core with nothing to catch it in this environment — so doing them blind
+  works against their own goal (bot fidelity / no behavior change). Recommend doing
+  them in the first engine-available session, running the difficulty report as the
+  gate exactly as the plan specifies.
+- **C4 (UI theme resource) folded into R3** — it is the explicit enabler for the
+  R3 visual pass, so it's implemented there alongside the styling it unblocks.
