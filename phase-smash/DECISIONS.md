@@ -269,3 +269,24 @@ except for the new per-level Fever threshold.
   gate exactly as the plan specifies.
 - **C4 (UI theme resource) folded into R3** — it is the explicit enabler for the
   R3 visual pass, so it's implemented there alongside the styling it unblocks.
+
+## R3 — UI/UX & presentation pass
+
+- **C4/D1 — one Theme** (`scripts/ui_theme.gd`): neon rounded StyleBoxFlat buttons
+  (glow border, hover/pressed/disabled states), consistent font colors/sizes,
+  applied at each screen root in `main._swap`. A custom OFL font is optional —
+  dropped in at `assets/fonts/ui.ttf` it's used automatically; until then the
+  default font carries the theme (font embedding is the one D1 asset still to source).
+  Dark vertical gradient backgrounds via `UIKit.fill_gradient` (Home/Settings/Skins).
+- **D2 — transitions:** 0.18s fade on a top CanvasLayer fader in `main`, unscaled
+  so pause can't stall it.
+- **D3 — Home:** equipped-skin swatch, booster count strip, crate progress bar.
+  (Full 3D SubViewport ball preview deferred — heavier and wants an engine to tune.)
+- **D4 — in-game juice:** pooled floating "+N" popups on shatter (screen-projected
+  from the impact), score count-up + "NEW BEST!" on the clear screen, and a
+  next-phase forecast dot above the ball (hidden in Fever).
+- **D5 — game over:** "Reached N%" so-close readout from the run's deepest descent.
+- **D6 — crate:** staged shake → swell → rarity-tinted reward card (gold/purple/
+  blue/green) with a pop tween.
+- **D7 — screenshot/trailer recapture DEFERRED** — needs the engine + final assets
+  (fonts/audio) on a device; tracked with the existing P7 store shot list.

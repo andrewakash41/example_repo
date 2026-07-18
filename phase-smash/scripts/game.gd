@@ -72,6 +72,8 @@ var _ball_light: OmniLight3D
 var _ball_mat: StandardMaterial3D
 var _phase_ring: MeshInstance3D          # depleting phase ring at the ball (B11)
 var _phase_ring_mat: StandardMaterial3D
+var _forecast: MeshInstance3D            # next-phase colour preview dot (D4)
+var _forecast_mat: StandardMaterial3D
 var _camera: Camera3D
 var _dir_light: DirectionalLight3D
 
@@ -109,6 +111,7 @@ var _cleared_level := 0
 var _crate2x_used := false
 var _fever_threshold := FEVER_THRESHOLD_DEFAULT  # per-level (B9)
 var _last_clear_gain := 0                         # crate progress granted this clear (B12)
+var _max_progress := 0.0                          # deepest descent this run, for "so close" (D5)
 
 var _cam_look_y := 0.0
 var _idle_bounce_v := 0.0
@@ -403,6 +406,18 @@ func _build_ball() -> void:
 	_phase_ring.material_override = _phase_ring_mat
 	_ball.add_child(_phase_ring)
 
+	# Next-phase forecast dot above the ball (D4): shows the colour you'll flip to,
+	# so a death reads as "my fault" rather than "unfair". Hidden during Fever.
+	_forecast = MeshInstance3D.new()
+	var dot := SphereMesh.new()
+	dot.radius = 0.12
+	dot.height = 0.24
+	_forecast.mesh = dot
+	_forecast_mat = _emissive(PSTypes.phase_color(PSTypes.other_phase(_phase)), 1.2)
+	_forecast.material_override = _forecast_mat
+	_forecast.position = Vector3(0, BALL_RADIUS + 0.5, 0)
+	_ball.add_child(_forecast)
+
 func _build_camera() -> void:
 	_camera = Camera3D.new()
 	_camera.fov = BASE_FOV
@@ -602,13 +617,17 @@ func _shatter(platform_index: int, seg_index: int, kind: int) -> void:
 	# always is when the ball is crossing it — but guard anyway (B2).
 	var row: Array = _seg_nodes[platform_index]
 	var node: MeshInstance3D = row[seg_index] if seg_index < row.size() else null
+	var points := int(round(_combo_mult()))
 	if node and is_instance_valid(node):
-		_shatter_pool.burst(node.global_position, PSTypes.seg_color(kind))
+		var pos := node.global_position
+		_shatter_pool.burst(pos, PSTypes.seg_color(kind))
+		if _camera:  # floating "+N" at the impact point (D4)
+			_hud.spawn_score_popup(_camera.unproject_position(pos), points)
 		node.queue_free()
 		row[seg_index] = null
 
 	_chain += 1
-	GameState.add_score(int(round(_combo_mult())))
+	GameState.add_score(points)
 	SaveManager.data["lifetime"]["segments_smashed"] += 1
 	_shake = maxf(_shake, SHAKE_SHATTER * _combo_mult())  # scales with combo (§6.3)
 	Haptics.light()
@@ -763,7 +782,8 @@ func _show_game_over() -> void:
 	_state = State.FINISHED
 	Engine.time_scale = 1.0
 	_refund_boosters(false)  # B6: unused shield comes back on a lost run
-	_hud.show_game_over(GameState.run_score, SaveManager.get_best_score(GameState.current_level))
+	_hud.show_game_over(GameState.run_score,
+		SaveManager.get_best_score(GameState.current_level), _max_progress)
 
 # --- Level clear ------------------------------------------------------------
 
@@ -778,6 +798,9 @@ func _on_level_clear() -> void:
 	_cleared_level = cleared_level
 	AdManager.notify_level_completed()
 	GameState.clear_level()
+	# Capture whether this run beats the stored best BEFORE recording it (D4).
+	var prev_best := SaveManager.get_best_score(cleared_level)
+	var new_best := GameState.run_score > prev_best
 	SaveManager.record_best_score(cleared_level, GameState.run_score)
 	SaveManager.data["lifetime"]["levels_cleared"] += 1
 	# +1 crate progress normally; a boss clear grants an instant crate (§7.2).
@@ -795,7 +818,7 @@ func _on_level_clear() -> void:
 	_shake = SHAKE_FEVER
 	_hud.flash(Color(0.4, 1, 0.7), 0.4)
 	_hud.show_level_clear(cleared_level, GameState.run_score,
-		SaveManager.get_best_score(cleared_level))
+		SaveManager.get_best_score(cleared_level), new_best)
 
 # --- Visuals / HUD ----------------------------------------------------------
 
@@ -812,6 +835,12 @@ func _apply_phase_visuals() -> void:
 	if _phase_ring_mat:
 		_phase_ring_mat.albedo_color = Color(c.r, c.g, c.b, _phase_ring_mat.albedo_color.a)
 		_phase_ring_mat.emission = c
+	if _forecast and _forecast_mat:
+		# Forecast shows the colour you'll flip TO; meaningless in Fever, so hide it.
+		_forecast.visible = not _fever
+		var nxt := PSTypes.phase_color(PSTypes.other_phase(_phase))
+		_forecast_mat.albedo_color = nxt
+		_forecast_mat.emission = nxt
 	if _trail and _trail.process_material:
 		var pm := _trail.process_material as ParticleProcessMaterial
 		pm.color = c
@@ -843,7 +872,9 @@ func _update_camera(delta: float, smashing: bool) -> void:
 func _update_hud() -> void:
 	var top := _platform_y(0)
 	var bottom := _finish_y()
-	_hud.set_progress(clampf((top - _ball_y) / (top - bottom), 0.0, 1.0))
+	var progress := clampf((top - _ball_y) / (top - bottom), 0.0, 1.0)
+	_max_progress = maxf(_max_progress, progress)
+	_hud.set_progress(progress)
 	_hud.set_score(GameState.run_score)
 	_hud.set_combo(_combo_mult())
 	var phase_ratio := _phase_timer / _phase_duration

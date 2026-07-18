@@ -28,12 +28,16 @@ func _ready() -> void:
 	box.name = "Box"
 	box.add_child(UIKit.label("CRATE", 40, Color(1, 1, 1, 0.6)))
 	var chest := UIKit.label("🎁", 120)
+	chest.pivot_offset = Vector2(60, 60)
 	box.add_child(chest)
 
-	# Simple 1.5s open animation, then reveal (§7.2). Tap anywhere to skip.
+	# Staged open: anticipation shake → swell → reveal (§7.2, D6). Tap to skip.
 	var tw := create_tween()
-	tw.tween_property(chest, "scale", Vector2(1.2, 1.2), 0.75).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(chest, "scale", Vector2(1.0, 1.0), 0.35)
+	for i in 4:
+		tw.tween_property(chest, "rotation", 0.12, 0.06).as_relative()
+		tw.tween_property(chest, "rotation", -0.12, 0.06).as_relative()
+	tw.tween_property(chest, "scale", Vector2(1.35, 1.35), 0.35).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(chest, "scale", Vector2(1.0, 1.0), 0.2)
 	tw.tween_callback(_reveal)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -50,7 +54,14 @@ func _reveal() -> void:
 	UIKit.fill_bg(self, Color(0.05, 0.03, 0.10))
 	var box := UIKit.center_box(self, 24)
 	box.add_child(UIKit.label("YOU GOT", 34, Color(1, 1, 1, 0.6)))
-	box.add_child(UIKit.label(_reward_text(), 44, Color(1, 0.85, 0.3)))
+	# Reward card tinted by rarity (D6): jackpot gold, skin purple, shard blue,
+	# booster green — reads the value at a glance.
+	var card := UIKit.label(_reward_text(), 44, _rarity_color())
+	card.pivot_offset = Vector2(0, 0)
+	box.add_child(card)
+	var pop := create_tween()
+	pop.tween_property(card, "scale", Vector2(1.15, 1.15), 0.18).from(Vector2(0.6, 0.6)).set_trans(Tween.TRANS_BACK)
+	pop.tween_property(card, "scale", Vector2(1.0, 1.0), 0.12)
 	# A boss +5 (or a 2x-crate) can bank enough progress for several crates; let
 	# the player open them all here instead of round-tripping through Home (B15).
 	if Crates.can_open(SaveManager.data):
@@ -60,6 +71,14 @@ func _reveal() -> void:
 func _on_open_another() -> void:
 	AudioManager.play_sfx(&"ui_tap")
 	_router.go_to_crate()  # reloads the crate screen, drawing the next reward
+
+func _rarity_color() -> Color:
+	match _reward["type"]:
+		"jackpot": return Color(1.0, 0.84, 0.3)   # gold
+		"skin": return Color(0.8, 0.5, 1.0)        # purple
+		"shard": return Color(0.4, 0.8, 1.0)       # blue
+		"booster": return Color(0.4, 1.0, 0.6)     # green
+	return Color(1, 0.85, 0.3)
 
 func _reward_text() -> String:
 	match _reward["type"]:

@@ -179,6 +179,34 @@ func set_fever(ratio: float, active: bool) -> void:
 	_fever_bar.value = clampf(ratio, 0.0, 1.0)
 	_style_bar_color(_fever_bar, Color(1, 0.85, 0.2) if active else Color(1, 0.4, 0.1))
 
+## Pooled floating "+N" popups on shatter (D4, pooled per §8.4). The game passes a
+## screen position (camera.unproject_position of the segment) and the points.
+var _popups: Array[Label] = []
+var _popup_next := 0
+const POPUP_POOL := 12
+
+func spawn_score_popup(screen_pos: Vector2, amount: int) -> void:
+	if _popups.is_empty():
+		for i in POPUP_POOL:
+			var l := Label.new()
+			l.add_theme_font_size_override("font_size", 30)
+			l.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
+			l.visible = false
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			l.z_index = 5
+			add_child(l)
+			_popups.append(l)
+	var lbl := _popups[_popup_next]
+	_popup_next = (_popup_next + 1) % _popups.size()
+	lbl.text = "+%d" % amount
+	lbl.position = screen_pos
+	lbl.modulate = Color(1, 1, 1, 1)
+	lbl.visible = true
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(lbl, "position:y", screen_pos.y - 60.0, 0.6)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.6)
+	tw.chain().tween_callback(func(): lbl.visible = false)
+
 func hide_hint() -> void:
 	_hint_label.visible = false
 
@@ -240,11 +268,20 @@ func _button(box: VBoxContainer, text: String, cb: Callable, color: Color = Colo
 	box.add_child(b)
 	return b
 
-func show_level_clear(level: int, score: int, best: int) -> void:
+func show_level_clear(level: int, score: int, best: int, new_best: bool = false) -> void:
 	var box := _new_overlay(0.55)
 	_title(box, "LEVEL %d CLEAR" % level, 60, Color(0.3, 1, 0.6))
-	_title(box, "Score  %d" % score, 36)
-	_title(box, "Best  %d" % best, 28, Color(1, 1, 1, 0.7))
+	# Score counts up from 0 for a bit of celebration (D4).
+	var score_label := Label.new()
+	score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_label.add_theme_font_size_override("font_size", 40)
+	box.add_child(score_label)
+	var tw := create_tween()
+	tw.tween_method(func(v: float): score_label.text = "Score  %d" % int(v), 0.0, float(score), 0.6)
+	if new_best:
+		_title(box, "★ NEW BEST! ★", 34, Color(1, 0.85, 0.3))
+	else:
+		_title(box, "Best  %d" % best, 28, Color(1, 1, 1, 0.7))
 	_button(box, "NEXT", func(): replay_pressed.emit())
 	# Secondary: 2x crate progress via rewarded ad (§3.7, §9.2 placement 3).
 	# Never show a button that can't work — hidden while no rewarded ad is ready,
@@ -318,9 +355,12 @@ func _on_pause_toggle(on: bool, key: String) -> void:
 func hide_pause() -> void:
 	clear_overlay()
 
-func show_game_over(score: int, best: int) -> void:
+func show_game_over(score: int, best: int, reached: float = -1.0) -> void:
 	var box := _new_overlay(0.65)
 	_title(box, "GAME OVER", 60, Color(1, 0.4, 0.4))
+	# "So close" readout turns a death from unfair into motivating (D5).
+	if reached >= 0.0:
+		_title(box, "Reached %d%%" % int(round(reached * 100.0)), 30, Color(1, 0.8, 0.5))
 	_title(box, "Score  %d" % score, 36)
 	_title(box, "Best  %d" % best, 28, Color(1, 1, 1, 0.7))
 	_button(box, "RETRY", func(): replay_pressed.emit())

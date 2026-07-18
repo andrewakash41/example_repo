@@ -18,7 +18,7 @@ func on_back_requested() -> void:
 		_router.go_to_home()
 
 func _ready() -> void:
-	UIKit.fill_bg(self, Color(0.06, 0.04, 0.12))
+	UIKit.fill_gradient(self, Color(0.10, 0.06, 0.20), Color(0.03, 0.02, 0.07))
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 80

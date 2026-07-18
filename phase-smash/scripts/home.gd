@@ -32,10 +32,20 @@ func _toast(text: String) -> void:
 	tw.tween_callback(l.queue_free)
 
 func _ready() -> void:
-	UIKit.fill_bg(self, Color(0.06, 0.04, 0.12))
+	UIKit.fill_gradient(self, Color(0.10, 0.06, 0.20), Color(0.03, 0.02, 0.07))
 	var box := UIKit.center_box(self, 26)
 
 	box.add_child(UIKit.label(Strings.t("app_title"), 68, Color(1, 0.54, 0.12)))
+
+	# Equipped-skin preview swatch — doubles as a nudge toward the skin shop (D3).
+	var skin := Skins.get_skin(SaveManager.data["equipped_skin"])
+	var swatch := ColorRect.new()
+	swatch.color = skin.base
+	swatch.custom_minimum_size = Vector2(64, 64)
+	var swatch_row := CenterContainer.new()
+	swatch_row.add_child(swatch)
+	box.add_child(swatch_row)
+
 	box.add_child(UIKit.label(Strings.f("home_level", [SaveManager.data["highest_level"]]), 30, Color(0.12, 0.78, 1)))
 
 	var play := UIKit.button(Strings.t("btn_play"), 48, _on_play, Vector2(320, 118))
@@ -52,13 +62,31 @@ func _ready() -> void:
 	row.add_child(UIKit.button(Strings.t("btn_skins"), 30, _on_skins, Vector2(180, 78)))
 	row.add_child(UIKit.button(Strings.t("btn_settings"), 30, _on_settings, Vector2(180, 78)))
 
+	# Booster count strip (D3).
+	var bstrip := HBoxContainer.new()
+	bstrip.alignment = BoxContainer.ALIGNMENT_CENTER
+	bstrip.add_theme_constant_override("separation", 24)
+	box.add_child(bstrip)
+	for id in Boosters.IDS:
+		bstrip.add_child(UIKit.label("%s  x%d" % [Boosters.info(id).name, Boosters.count(SaveManager.data, id)],
+			22, Color(1, 1, 1, 0.7)))
+
 	var progress := int(SaveManager.data["crate_progress"])
 	if Crates.can_open(SaveManager.data):
 		var crate := UIKit.button(Strings.t("home_open_crate"), 32, _on_crate, Vector2(300, 84))
 		crate.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
 		box.add_child(crate)
 	else:
-		box.add_child(UIKit.label(Strings.f("home_crate_progress", [progress, Crates.CRATE_COST]), 26, Color(1, 1, 1, 0.7)))
+		# Crate progress as a labelled bar rather than bare text (D3).
+		box.add_child(UIKit.label(Strings.f("home_crate_progress", [progress, Crates.CRATE_COST]), 24, Color(1, 1, 1, 0.7)))
+		var bar := ProgressBar.new()
+		bar.show_percentage = false
+		bar.max_value = Crates.CRATE_COST
+		bar.value = progress
+		bar.custom_minimum_size = Vector2(300, 18)
+		var bar_row := CenterContainer.new()
+		bar_row.add_child(bar)
+		box.add_child(bar_row)
 
 	AudioManager.play_music(&"menu")
 

@@ -10,6 +10,23 @@ static func fill_bg(parent: Control, color: Color) -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(bg)
 
+## Vertical dark gradient background (D1). `top` fades to `bottom` down the screen,
+## for depth instead of a flat fill. Cheap (one GradientTexture2D).
+static func fill_gradient(parent: Control, top: Color, bottom: Color) -> void:
+	var grad := Gradient.new()
+	grad.set_color(0, top)
+	grad.set_color(1, bottom)
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill_from = Vector2(0, 0)
+	tex.fill_to = Vector2(0, 1)
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(tr)
+
 static func center_box(parent: Control, separation: int = 24) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_CENTER)
