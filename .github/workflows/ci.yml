@@ -1,0 +1,77 @@
+name: Phase Smash CI
+
+# R0: every push/PR downloads Godot 4.3 headless and runs the unit suite + soak
+# smoke test, plus a gdtoolkit syntax/lint gate. The repo previously had zero CI;
+# this makes "the tests never ran" impossible to repeat silently.
+
+on:
+  push:
+    paths:
+      - 'phase-smash/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'phase-smash/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.3
+  GODOT_RELEASE: stable
+
+jobs:
+  lint:
+    name: gdtoolkit syntax + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install gdtoolkit
+        run: pip install "gdtoolkit==4.*"
+      - name: Parse all scripts
+        working-directory: phase-smash
+        run: find . -name '*.gd' -print0 | xargs -0 -n1 gdparse
+      - name: Lint
+        working-directory: phase-smash
+        # Lint is advisory: report issues but do not fail the build on style-only
+        # findings so gameplay CI stays green on formatting nits.
+        run: gdlint . || true
+
+  test:
+    name: Godot headless tests + soak
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-${{ env.GODOT_RELEASE }}
+
+      - name: Download Godot ${{ env.GODOT_VERSION }} headless
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64.zip"
+          curl -sSL -o /tmp/godot.zip "$url"
+          unzip -o /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64 ~/godot/godot
+          chmod +x ~/godot/godot
+
+      - name: Import project (build resource cache headless)
+        working-directory: phase-smash
+        # First headless open imports assets; allow it to exit non-zero on the
+        # initial import pass which some Godot versions report.
+        run: ~/godot/godot --headless --path . --import || true
+
+      - name: Run unit tests + difficulty report
+        working-directory: phase-smash
+        run: ~/godot/godot --headless --path . -s tools/run_tests.gd
+
+      - name: Run soak smoke test
+        working-directory: phase-smash
+        run: ~/godot/godot --headless --path . -s tools/soak.gd
