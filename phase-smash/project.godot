@@ -1,0 +1,41 @@
+; Phase Smash — Godot 4.3 project configuration
+; Engine and package decisions are recorded in DECISIONS.md.
+
+config_version=5
+
+[application]
+
+config/name="Phase Smash"
+config/description="Hyper-casual 3D helix smasher with a phase-matching twist."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "Mobile")
+config/icon="res://icon.svg"
+
+[autoload]
+
+; Skeletons for P0 — filled out in later phases (see milestone plan §11).
+GameState="*res://autoload/GameState.gd"
+SaveManager="*res://autoload/SaveManager.gd"
+AudioManager="*res://autoload/AudioManager.gd"
+Haptics="*res://autoload/Haptics.gd"
+LevelLoader="*res://autoload/LevelLoader.gd"
+AdManager="*res://autoload/AdManager.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/handheld/orientation="sensor_portrait"
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[physics]
+
+common/physics_ticks_per_second=60
+3d/default_gravity=22.0
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/vram_compression/import_etc2_astc=true

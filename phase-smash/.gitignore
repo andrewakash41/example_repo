@@ -1,0 +1,15 @@
+# Godot 4 project ignores
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Build output
+*.aab
+*.apk
+android/build/
+builds/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
