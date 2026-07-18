@@ -37,9 +37,18 @@ func _ready() -> void:
 	play.text = "PLAY"
 	play.custom_minimum_size = Vector2(320, 120)
 	play.add_theme_font_size_override("font_size", 48)
+	play.pivot_offset = Vector2(160, 60)
 	play.pressed.connect(_on_play_pressed)
 	box.add_child(play)
 
+	# Gentle idle pulse on PLAY (UI tween juice, §6.3).
+	var tw := create_tween().set_loops()
+	tw.tween_property(play, "scale", Vector2(1.05, 1.05), 0.7).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(play, "scale", Vector2(1.0, 1.0), 0.7).set_trans(Tween.TRANS_SINE)
+
+	AudioManager.play_music(&"menu")
+
 func _on_play_pressed() -> void:
+	AudioManager.play_sfx(&"ui_tap")
 	if _router and _router.has_method("go_to_game"):
 		_router.go_to_game()

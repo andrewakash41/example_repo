@@ -87,3 +87,25 @@ rationale each. Newest at top within a phase.
   need a real run of `godot --headless -s tools/run_tests.gd` to confirm and
   tune against. The *correctness* criterion (no unwinnable platforms) is proven
   independently above.
+
+## P3 — Art, juice, audio
+
+- **All visuals are code-generated** (emissive materials, `ProceduralSkyMaterial`
+  gradient sky per theme, GPU particles with billboard quads). No texture assets
+  yet — the "fake bloom via halo sprites" fallback (§6.2) stays documented if
+  real glow costs frames on device; for now cheap `Environment` glow is on and
+  Lite FX turns it off.
+- **5 themes recolor ambience only** (sky/ambient/finish), never the semantic
+  amber/azure/obsidian segment hues (§6.4). Boss levels darken the grade.
+- **Lite FX** is both a setting and an auto-trigger: sustained frame time above
+  20ms for 5s disables glow and drops `amount_ratio` to 0.5 on all particle
+  systems (§8.4). Real per-device profiling is P6.
+- **Hit-stop and death slow-mo both use `Engine.time_scale`** with real-time
+  (`ignore_time_scale`) timers to restore, so a fixed wall-clock freeze holds
+  regardless of the current scale.
+- **Audio wired but silent**: `AudioManager` lazy-loads `res://assets/{sfx,music}`
+  and no-ops when a file is missing, so every call site is complete now and comes
+  alive when CC0/CC-BY OGGs are dropped in (§6.5).
+- **Syntax verified with gdtoolkit 4.5** (`gdparse`) across all 20 scripts;
+  semantic/API correctness of the new particle + sky calls still needs a first
+  editor run (engine not runnable here).

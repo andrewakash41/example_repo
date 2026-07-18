@@ -9,6 +9,24 @@ See [`../PHASE_SMASH_HANDOFF.md`](../PHASE_SMASH_HANDOFF.md) for the full design
 and the milestone plan (P0–P7). Executor decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
+## Status — P3 (Art, juice, audio)
+
+On top of P2:
+
+- **5 themes** (Dusk Neon / Deep Ocean / Magma Core / Violet Void / Arctic Glow)
+  cycling every 10 levels — procedural gradient sky + ambient + finish pad,
+  semantic segment colors kept fixed.
+- **Juice**: phase-colored ball trail (widens in Fever), fever flame, level-clear
+  confetti (GPU particles); screen shake scaling with combo; hit-stop on hard
+  bounce; camera FOV push; flip/fever/clear flashes.
+- **Lite FX**: settings toggle + auto-trigger (glow off, half particles) when
+  frame time exceeds budget.
+- **Audio**: `AudioManager` lazy-loads SFX/music from `assets/` and stays silent
+  until real CC0/CC-BY OGGs are added (see `assets/README.md`).
+
+Syntax of all scripts verified with gdtoolkit 4.5; the particle/sky look needs a
+first editor run to confirm and tune.
+
 ## Status — P2 (Level system)
 
 On top of P1:

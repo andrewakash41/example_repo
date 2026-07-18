@@ -36,6 +36,18 @@ const DEATH_SLOWMO_SCALE := 0.4
 const DEATH_SLOWMO_TIME := 0.4
 const BOSS_BAND_SIZE := 5
 
+# Juice (§6.3)
+const SHAKE_DECAY := 0.9
+const SHAKE_SHATTER := 0.018
+const SHAKE_FEVER := 0.12
+const HITSTOP := 0.03
+# Lite FX auto-trigger (§8.4): >20ms avg for 5s
+const LITE_FRAME_MS := 20.0
+const LITE_HOLD_S := 5.0
+
+const JuiceScript := preload("res://scripts/juice.gd")
+const ThemesScript := preload("res://scripts/themes.gd")
+
 enum State { PLAY, DEAD, REVIVING, FINISHED }
 
 var _router: Node
@@ -81,6 +93,17 @@ var _cam_look_y := 0.0
 var _idle_bounce_v := 0.0
 var _hard_bounce_v := 0.0
 
+# Juice / FX
+var _theme
+var _env: Environment
+var _trail: GPUParticles3D
+var _fever_flame: GPUParticles3D
+var _confetti: GPUParticles3D
+var _shake := 0.0
+var _lite := false            # effective Lite FX (setting or auto)
+var _auto_lite := false
+var _frame_over_timer := 0.0
+
 func set_router(router: Node) -> void:
 	_router = router
 
@@ -95,6 +118,9 @@ func _ready() -> void:
 	_phase_duration = _level.phase_duration
 	_phase_timer = _level.phase_duration
 	_seg_kind = TowerGen.build(_level)
+
+	_theme = ThemesScript.get_theme(_level.theme_id)
+	_lite = bool(SaveManager.data["settings"].get("lite_fx", false))
 
 	_setup_environment()
 	_build_materials()
@@ -111,15 +137,33 @@ func _ready() -> void:
 # --- Construction -----------------------------------------------------------
 
 func _setup_environment() -> void:
-	var env := WorldEnvironment.new()
+	var world := WorldEnvironment.new()
 	var e := Environment.new()
-	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color(0.05, 0.03, 0.10) if not _level.is_boss else Color(0.02, 0.015, 0.05)
+
+	# Sky gradient from the theme (§6.4); boss levels darken the grade.
+	var dark := 0.6 if _level.is_boss else 1.0
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = _theme.sky_top * dark
+	sky_mat.sky_horizon_color = _theme.sky_horizon * dark
+	sky_mat.ground_horizon_color = _theme.sky_horizon * dark
+	sky_mat.ground_bottom_color = _theme.ground * dark
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
+	e.background_mode = Environment.BG_SKY
+	e.sky = sky
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.5, 0.5, 0.6)
+	e.ambient_light_color = _theme.ambient
 	e.ambient_light_energy = 0.8
-	env.environment = e
-	add_child(env)
+
+	# Cheap bloom-look glow (§6.2); off under Lite FX.
+	e.glow_enabled = not _lite
+	e.glow_intensity = 0.5
+	e.glow_bloom = 0.15
+	e.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+
+	world.environment = e
+	_env = e
+	add_child(world)
 
 	_dir_light = DirectionalLight3D.new()
 	_dir_light.rotation = Vector3(deg_to_rad(-55), deg_to_rad(-30), 0)
@@ -191,9 +235,13 @@ func _build_tower() -> void:
 	pad_mesh.bottom_radius = RING_OUTER
 	pad_mesh.height = 0.3
 	pad.mesh = pad_mesh
-	pad.material_override = _emissive(Color(0.2, 0.9, 0.5), 0.7)
+	pad.material_override = _emissive(_theme.finish, 0.7)
 	pad.position = Vector3(0, _finish_y(), 0)
 	add_child(pad)
+
+	_confetti = JuiceScript.make_confetti(_lite)
+	_confetti.position = Vector3(0, _finish_y() + 1.0, 0)
+	add_child(_confetti)
 
 ## Boss levels split platforms into alternating bands that rotate independently
 ## (§5.1). Non-boss levels rotate uniformly.
@@ -227,6 +275,12 @@ func _build_ball() -> void:
 	_ball_light.omni_range = 4.0
 	_ball_light.light_energy = 1.5
 	_ball.add_child(_ball_light)
+
+	# Ribbon-ish trail (phase-colored) + fever flame, ≤3 live systems (§6.2).
+	_trail = JuiceScript.make_trail(PSTypes.phase_color(_phase), _lite)
+	_ball.add_child(_trail)
+	_fever_flame = JuiceScript.make_fever_flame(_lite)
+	_ball.add_child(_fever_flame)
 
 func _build_camera() -> void:
 	_camera = Camera3D.new()
@@ -266,6 +320,7 @@ func _effective_holding() -> bool:
 # --- Per-frame --------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	_monitor_frame_time(delta)
 	if _state == State.REVIVING and _revive_timer > 0.0:
 		var before := ceili(_revive_timer)
 		_revive_timer -= delta
@@ -309,6 +364,27 @@ func _physics_process(delta: float) -> void:
 	_update_camera(delta, smashing)
 	_update_hud()
 
+## Auto "Lite FX": if the frame time stays above the budget for a sustained
+## window, drop glow and thin particles (§8.4). Also honors the settings toggle.
+func _monitor_frame_time(delta: float) -> void:
+	if _auto_lite or _lite:
+		return
+	if delta * 1000.0 > LITE_FRAME_MS:
+		_frame_over_timer += delta
+		if _frame_over_timer >= LITE_HOLD_S:
+			_enable_lite_fx()
+	else:
+		_frame_over_timer = maxf(_frame_over_timer - delta, 0.0)
+
+func _enable_lite_fx() -> void:
+	_auto_lite = true
+	_lite = true
+	if _env:
+		_env.glow_enabled = false
+	for p in [_trail, _fever_flame, _confetti]:
+		if p:
+			p.amount_ratio = 0.5
+
 func _tick_phase(delta: float) -> void:
 	if _effective_holding() and _ball_vy < 0.0:
 		return  # paused while smash-descending (§3.4)
@@ -340,12 +416,17 @@ func _start_fever() -> void:
 	_fever = true
 	_fever_grace_timer = FEVER_GRACE
 	_apply_phase_visuals()
+	if _fever_flame:
+		_fever_flame.emitting = true
+	_shake = SHAKE_FEVER
 	_hud.flash(Color(1, 0.9, 0.6), 0.5)
 	Haptics.heavy()
 	AudioManager.play_sfx(&"fever")
 
 func _end_fever() -> void:
 	_fever = false
+	if _fever_flame:
+		_fever_flame.emitting = false
 	_apply_phase_visuals()
 
 func _resolve_descent(prev_bottom: float, new_bottom: float, smashing: bool) -> void:
@@ -386,6 +467,7 @@ func _shatter(platform_index: int, seg_index: int, kind: int) -> void:
 	_chain += 1
 	GameState.add_score(int(round(_combo_mult())))
 	SaveManager.data["lifetime"]["segments_smashed"] += 1
+	_shake = maxf(_shake, SHAKE_SHATTER * _combo_mult())  # scales with combo (§6.3)
 	Haptics.light()
 	AudioManager.play_sfx(&"shatter")
 	if not _fever and _chain >= FEVER_THRESHOLD:
@@ -396,8 +478,21 @@ func _hard_bounce(y_top: float) -> void:
 	_ball_vy = _hard_bounce_v
 	_chain = 0
 	_input_lock_timer = INPUT_LOCK
+	_hit_stop()
 	Haptics.medium()
 	AudioManager.play_sfx(&"hard_bounce")
+
+## Brief freeze on impact (§6.3). Real-time timer so it lasts a fixed wall-clock
+## duration regardless of the current time scale.
+func _hit_stop() -> void:
+	if _state != State.PLAY:
+		return
+	Engine.time_scale = 0.0
+	get_tree().create_timer(HITSTOP, true, false, true).timeout.connect(_end_hit_stop)
+
+func _end_hit_stop() -> void:
+	if _state == State.PLAY:
+		Engine.time_scale = 1.0
 
 func _combo_mult() -> float:
 	return clampf(1.0 + float(_chain) / 10.0, 1.0, 5.0)
@@ -476,6 +571,10 @@ func _on_level_clear() -> void:
 	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + gain
 	Haptics.heavy()
 	AudioManager.play_sfx(&"level_clear")
+	if _confetti:
+		_confetti.restart()
+		_confetti.emitting = true
+	_shake = SHAKE_FEVER
 	_hud.flash(Color(0.4, 1, 0.7), 0.4)
 	_hud.show_level_clear(GameState.current_level, GameState.run_score,
 		SaveManager.get_best_score(GameState.current_level))
@@ -490,6 +589,12 @@ func _apply_phase_visuals() -> void:
 	_ball_mat.emission = c
 	_ball_mat.emission_energy_multiplier = 1.4 if _fever else 0.9
 	_ball_light.light_color = c
+	if _trail and _trail.process_material:
+		var pm := _trail.process_material as ParticleProcessMaterial
+		pm.color = c
+		# Trail doubles in width during Fever (§6.3).
+		pm.scale_min = 1.0 if _fever else 0.5
+		pm.scale_max = 1.8 if _fever else 0.9
 	if _hud:
 		_hud.set_phase(PSTypes.phase_color(_phase))
 
@@ -498,6 +603,13 @@ func _update_camera(delta: float, smashing: bool) -> void:
 	var target := Vector3(RING_MID * 0.45, _cam_look_y - 1.0, 0.0)
 	_camera.position = target + Vector3(1.2, 4.5, 6.0)
 	_camera.look_at(target, Vector3.UP)
+	# Screen shake: offset after aiming so the camera visibly jitters (§6.3).
+	if _shake > 0.0001:
+		_camera.position += Vector3(
+			randf_range(-_shake, _shake),
+			randf_range(-_shake, _shake),
+			0.0)
+		_shake = move_toward(_shake, 0.0, SHAKE_DECAY * delta)
 	var want_fov := BASE_FOV
 	if _fever:
 		want_fov += FEVER_FOV_KICK
