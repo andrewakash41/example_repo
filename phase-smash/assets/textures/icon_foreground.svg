@@ -1,0 +1,11 @@
+<svg width="432" height="432" viewBox="0 0 432 432" xmlns="http://www.w3.org/2000/svg">
+  <!-- Foreground for Android adaptive icon. Keep art within the center 66%
+       safe zone (~ radius 142 from center) so launcher masks don't clip it. -->
+  <g transform="translate(216,216)">
+    <!-- amber half -->
+    <path d="M0 -96 A96 96 0 0 1 0 96 Z" fill="#ff8a1e"/>
+    <!-- azure half -->
+    <path d="M0 -96 A96 96 0 0 0 0 96 Z" fill="#1ec8ff"/>
+    <circle cx="0" cy="0" r="96" fill="none" stroke="#ffffff" stroke-width="10" opacity="0.85"/>
+  </g>
+</svg>

@@ -8,6 +8,9 @@ var _slots: Dictionary = {}  # id -> Button
 func set_router(router: Node) -> void:
 	_router = router
 
+func on_back_requested() -> void:
+	_router.go_to_home()
+
 func _ready() -> void:
 	var level := LevelLibrary.get_level(SaveManager.data["highest_level"])
 	var theme := Themes.get_theme(level.theme_id)

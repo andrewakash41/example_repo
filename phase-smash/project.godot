@@ -7,9 +7,11 @@ config_version=5
 
 config/name="Phase Smash"
 config/description="Hyper-casual 3D helix smasher with a phase-matching twist."
+config/version="0.6.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
 config/icon="res://icon.svg"
+boot_splash/show_image=false
 
 [autoload]
 
@@ -28,6 +30,7 @@ window/size/viewport_height=1920
 window/handheld/orientation="sensor_portrait"
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/energy_saving/keep_screen_on=true
 
 [physics]
 

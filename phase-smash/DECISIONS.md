@@ -165,3 +165,24 @@ rationale each. Newest at top within a phase.
   display and airplane-mode verification — the acceptance items that require
   Android hardware (§9 accept). The cap logic they'd exercise is already proven
   in isolation.
+
+## P6 — Hardening
+
+- **Pause is real `get_tree().paused`** with the HUD set to
+  `PROCESS_MODE_ALWAYS` so the menu stays interactive while everything else
+  freezes. Auto-pause fires on `APPLICATION_PAUSED` (never die to a phone call,
+  §8.2) and the state is persisted on pause/close.
+- **Back gesture routed through the router** (§8.5): `main` forwards
+  `WM_GO_BACK_REQUEST` to the active screen's `on_back_requested()` — game
+  pauses/resumes, menus go home, and home double-taps to exit.
+- **Safe-area inset** maps the OS display safe-area top into viewport units and
+  pushes the HUD's top row below a cutout/status bar (§8.5). Approximate; a
+  device pass should confirm on a notched panel.
+- **Soak proxy** (`tools/soak.gd`): runs the bot across 50 consecutive levels
+  headless and asserts orphan-node count doesn't grow — a CI-able stability
+  smoke test. The real §6 memory soak (50 live scene loads, flat RSS over 30
+  min) and on-device 60fps profiling remain device tasks.
+- **Adaptive icon** foreground/background SVGs added (`assets/textures/`), art
+  kept inside the launcher safe zone; wired via the export preset in P7.
+- **`keep_screen_on` + versioned** (`config/version`); boot splash off for a
+  fast cold start.

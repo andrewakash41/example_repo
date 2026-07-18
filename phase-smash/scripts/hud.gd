@@ -10,6 +10,9 @@ signal replay_pressed
 signal revive_pressed
 signal revive_declined
 signal crate2x_pressed
+signal pause_pressed
+signal resume_pressed
+signal restart_pressed
 
 var _progress: ProgressBar
 var _score_label: Label
@@ -18,6 +21,7 @@ var _hint_label: Label
 var _phase_bar: ProgressBar
 var _fever_bar: ProgressBar
 var _flash: ColorRect
+var _pause_btn: Button
 var _overlay: Control
 var _revive_countdown_label: Label
 
@@ -80,12 +84,42 @@ func _ready() -> void:
 	_hint_label.offset_top = -110
 	add_child(_hint_label)
 
+	# Pause button, top-left (kept clear of the score at top-right).
+	var pause_btn := Button.new()
+	pause_btn.text = "❚❚"
+	pause_btn.add_theme_font_size_override("font_size", 34)
+	pause_btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	pause_btn.offset_left = 40
+	pause_btn.offset_top = 100
+	pause_btn.custom_minimum_size = Vector2(84, 84)
+	pause_btn.pressed.connect(func(): pause_pressed.emit())
+	add_child(pause_btn)
+	_pause_btn = pause_btn
+
 	# Full-screen flash for phase flips / fever start (alpha animated to 0).
 	_flash = ColorRect.new()
 	_flash.color = Color(1, 1, 1, 0)
 	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_flash)
+
+	_apply_safe_area()
+
+## Insets the top-of-screen controls below a display cutout / status bar (§8.5).
+## Approximate: maps the OS safe-area top inset into viewport units.
+func _apply_safe_area() -> void:
+	var safe := DisplayServer.get_display_safe_area()
+	var screen := DisplayServer.screen_get_size()
+	if screen.y <= 0:
+		return
+	var vp := get_viewport().get_visible_rect().size
+	var inset := float(safe.position.y) * (vp.y / float(screen.y))
+	if inset <= 1.0:
+		return
+	for c in [_progress, _score_label, _combo_label, _pause_btn]:
+		if c:
+			c.offset_top += inset
+			c.offset_bottom += inset
 
 func _make_bar(preset: int, top: int, _unused: int, height: int) -> ProgressBar:
 	var bar := ProgressBar.new()
@@ -219,6 +253,35 @@ func show_revive(seconds: int) -> void:
 func set_revive_countdown(seconds: int) -> void:
 	if _revive_countdown_label and is_instance_valid(_revive_countdown_label):
 		_revive_countdown_label.text = str(seconds)
+
+## Pause menu (§10): resume / restart / home + sound toggles.
+func show_pause() -> void:
+	var box := _new_overlay(0.6)
+	_title(box, "PAUSED", 60, Color(0.9, 0.9, 1))
+	_button(box, "RESUME", func(): resume_pressed.emit(), Color(0.3, 1, 0.6))
+	_button(box, "RESTART", func(): restart_pressed.emit())
+	_pause_toggle(box, "Music", "music")
+	_pause_toggle(box, "SFX", "sfx")
+	_button(box, "HOME", func(): home_pressed.emit())
+
+func _pause_toggle(box: VBoxContainer, label_text: String, key: String) -> void:
+	var b := CheckButton.new()
+	b.text = label_text
+	b.button_pressed = bool(SaveManager.data["settings"].get(key, true))
+	b.add_theme_font_size_override("font_size", 28)
+	b.toggled.connect(_on_pause_toggle.bind(key))
+	box.add_child(b)
+
+func _on_pause_toggle(on: bool, key: String) -> void:
+	SaveManager.data["settings"][key] = on
+	if key == "music":
+		AudioManager.set_music_enabled(on)
+	elif key == "sfx":
+		AudioManager.set_sfx_enabled(on)
+	SaveManager.save_game()
+
+func hide_pause() -> void:
+	clear_overlay()
 
 func show_game_over(score: int, best: int) -> void:
 	var box := _new_overlay(0.65)

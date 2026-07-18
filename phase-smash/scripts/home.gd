@@ -3,9 +3,29 @@ extends Control
 ## crate widget that opens when progress is full. Built in code.
 
 var _router: Node
+var _last_back_ms := -10000
 
 func set_router(router: Node) -> void:
 	_router = router
+
+## Double-back-to-exit on home (§8.5).
+func on_back_requested() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _last_back_ms < 1500:
+		get_tree().quit()
+	else:
+		_last_back_ms = now
+		_toast("Press back again to exit")
+
+func _toast(text: String) -> void:
+	var l := UIKit.label(text, 26, Color(1, 1, 1, 0.85))
+	l.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	l.offset_top = -160
+	add_child(l)
+	var tw := create_tween()
+	tw.tween_interval(1.2)
+	tw.tween_property(l, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(l.queue_free)
 
 func _ready() -> void:
 	UIKit.fill_bg(self, Color(0.06, 0.04, 0.12))

@@ -329,6 +329,11 @@ func _build_hud() -> void:
 	_hud.revive_pressed.connect(_on_revive_accept)
 	_hud.revive_declined.connect(_on_revive_decline)
 	_hud.crate2x_pressed.connect(_on_crate_2x)
+	_hud.pause_pressed.connect(_on_pause_pressed)
+	_hud.resume_pressed.connect(_resume)
+	_hud.restart_pressed.connect(_on_restart)
+	# HUD must keep processing while the tree is paused so the menu works.
+	_hud.process_mode = Node.PROCESS_MODE_ALWAYS
 
 # --- Input ------------------------------------------------------------------
 
@@ -726,8 +731,38 @@ func _on_crate_2x_fail() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		SaveManager.save_game()
+		_holding = false
 		if _state == State.PLAY:
-			_holding = false
+			_pause()
+
+# --- Pause (§8.2, §10) ------------------------------------------------------
+
+func _on_pause_pressed() -> void:
+	if _state == State.PLAY:
+		_pause()
+
+func _pause() -> void:
+	if get_tree().paused:
+		return
+	_holding = false
+	get_tree().paused = true
+	_hud.show_pause()
+
+func _resume() -> void:
+	get_tree().paused = false
+	_hud.hide_pause()
+
+func _on_restart() -> void:
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	_goto_game()  # reloads the current level (no advance)
+
+## Android back gesture (§8.5): pause during play, resume if already paused.
+func on_back_requested() -> void:
+	if get_tree().paused:
+		_resume()
+	elif _state == State.PLAY:
+		_pause()
 
 # --- Helpers ----------------------------------------------------------------
 

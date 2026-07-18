@@ -9,6 +9,22 @@ See [`../PHASE_SMASH_HANDOFF.md`](../PHASE_SMASH_HANDOFF.md) for the full design
 and the milestone plan (P0–P7). Executor decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
+## Status — P6 (Hardening)
+
+On top of P5:
+
+- **Pause**: pause button + auto-pause on focus loss (`get_tree().paused`, HUD
+  stays live), resume/restart/home + sound toggles; state saved on pause/close.
+- **Back gesture** routed via the router: game pauses/resumes, menus go back,
+  home double-taps to exit.
+- **Safe area**: HUD top row insets below a display cutout/status bar.
+- **Soak proxy** (`tools/soak.gd`): 50-level headless bot run asserting no
+  orphan-node growth.
+- **Adaptive icon** foreground/background + `keep_screen_on` + `config/version`.
+
+On-device 60fps profiling, the real 30-min memory soak, and notched-panel
+verification remain hardware tasks.
+
 ## Status — P5 (Ads & consent)
 
 On top of P4:

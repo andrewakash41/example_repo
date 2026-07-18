@@ -10,6 +10,12 @@ var _reward: Dictionary
 func set_router(router: Node) -> void:
 	_router = router
 
+func on_back_requested() -> void:
+	if _revealed:
+		_router.go_to_home()
+	else:
+		_reveal()
+
 func _ready() -> void:
 	UIKit.fill_bg(self, Color(0.05, 0.03, 0.10))
 	var rng := RandomNumberGenerator.new()

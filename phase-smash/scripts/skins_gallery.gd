@@ -7,6 +7,9 @@ var _router: Node
 func set_router(router: Node) -> void:
 	_router = router
 
+func on_back_requested() -> void:
+	_router.go_to_home()
+
 func _ready() -> void:
 	UIKit.fill_bg(self, Color(0.06, 0.04, 0.12))
 	var root := VBoxContainer.new()

@@ -26,6 +26,13 @@ func go_to_skins() -> void: _swap("skins")
 func go_to_settings() -> void: _swap("settings")
 func go_to_crate() -> void: _swap("crate")
 
+## Android back gesture / window back request (§8.5): hand it to the active
+## screen, which decides (game pauses, menus go back, home double-taps to exit).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if _current and is_instance_valid(_current) and _current.has_method("on_back_requested"):
+			_current.on_back_requested()
+
 func _swap(key: String) -> void:
 	if _current and is_instance_valid(_current):
 		_current.queue_free()
