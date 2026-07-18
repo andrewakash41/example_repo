@@ -9,6 +9,27 @@ See [`../PHASE_SMASH_HANDOFF.md`](../PHASE_SMASH_HANDOFF.md) for the full design
 and the milestone plan (P0–P7). Executor decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
+## Status — P2 (Level system)
+
+On top of P1:
+
+- **`LevelData` schema** (§5.2) + **`LevelLibrary`**: an explicit authored
+  difficulty curve for levels 1-50, procedural interpolation 51+ with a soft
+  ceiling at L200, and a boss every 10th level (1.5× platforms, gold grade,
+  independently-rotating bands).
+- **Generator + winnability validator**: every platform guarantees ≥2
+  contiguous safe segments per phase; invalid platforms are rerolled then
+  force-fixed. Deterministic per level number.
+- **Harness bot** (`tools/harness_bot.gd`): headless playtest sim with
+  configurable reaction latency, reporting clear rate / attempts / duration /
+  death causes per level.
+- **Tests + runner**: `godot --headless -s tools/run_tests.gd` runs generator
+  tests and prints the difficulty report.
+
+Verified here (standalone sim, engine not runnable in this env): 0 unwinnable
+platforms across levels 1-200 and 20k stress seeds. The bot-driven curve tuning
+(§5.3 targets) still needs a real headless run.
+
 ## Status — P1 (Core mechanic complete)
 
 The full core loop from §3 is in:

@@ -1,15 +1,14 @@
 extends Node3D
-## P1 gameplay: the full core mechanic. Rotating typed tower (amber/azure/
-## obsidian/gap), a scripted ball with the Phase system, hard bounce, Fever,
-## death + revive, and level-clear with scoring/combo (§3). Motion and collision
-## are fully scripted — the ball is the only moving body (§8.4).
+## Gameplay driver. Rotating typed tower (per-platform rotation so boss levels
+## can spin independent bands), scripted ball with the full Phase system, hard
+## bounce, Fever, death + revive, and level-clear scoring/combo (§3). Level
+## parameters come from LevelData via LevelLoader (§5).
 
 const TowerGen := preload("res://scripts/tower_generator.gd")
 const ShatterScript := preload("res://scripts/shatter.gd")
 const HudScript := preload("res://scripts/hud.gd")
 
-# --- Tuning (§4; provisional, refined by the harness in P2) -----------------
-const SEGMENT_COUNT := 8
+# --- Tuning (§4) ------------------------------------------------------------
 const PLATFORM_GAP := 0.9
 const PLATFORM_THICKNESS := 0.25
 const RING_INNER := 0.5
@@ -35,10 +34,12 @@ const REVIVE_SECONDS := 5
 const INVULN := 1.5
 const DEATH_SLOWMO_SCALE := 0.4
 const DEATH_SLOWMO_TIME := 0.4
+const BOSS_BAND_SIZE := 5
 
 enum State { PLAY, DEAD, REVIVING, FINISHED }
 
 var _router: Node
+var _level: LevelData
 var _hud: Hud
 var _tower: Node3D
 var _ball: MeshInstance3D
@@ -51,10 +52,13 @@ var _dir_light: DirectionalLight3D
 var _seg_kind: Array = []          # Array[Array[int]] PSTypes.Seg
 var _broken: Array = []            # Array[Array[bool]]
 var _seg_nodes: Array = []         # Array[Array[MeshInstance3D]]
+var _platform_nodes: Array = []    # Array[Node3D], one per platform (rotates)
+var _platform_rot: Array = []      # Array[float] current radians
+var _platform_speed: Array = []    # Array[float] rad/s
 var _mat_by_kind: Dictionary = {}
 var _platform_count: int = 30
-var _rot_speed := deg_to_rad(30.0)
-var _tower_rot := 0.0
+var _segment_count: int = 8
+var _seg_angle := TAU / 8.0
 
 # Ball / run state
 var _state: int = State.PLAY
@@ -64,7 +68,7 @@ var _holding := false
 var _phase: int = PSTypes.Phase.A
 var _phase_duration := 2.5
 var _phase_timer := 2.5
-var _chain := 0                    # segments broken this uninterrupted hold
+var _chain := 0
 var _fever := false
 var _fever_grace_timer := 0.0
 var _input_lock_timer := 0.0
@@ -73,7 +77,6 @@ var _revive_used := false
 var _revive_timer := 0.0
 var _cleared := false
 
-var _seg_angle := TAU / SEGMENT_COUNT
 var _cam_look_y := 0.0
 var _idle_bounce_v := 0.0
 var _hard_bounce_v := 0.0
@@ -85,14 +88,13 @@ func _ready() -> void:
 	_idle_bounce_v = sqrt(2.0 * GRAVITY_IDLE * IDLE_BOUNCE_HEIGHT)
 	_hard_bounce_v = sqrt(2.0 * GRAVITY_IDLE * (HARD_BOUNCE_GAPS * PLATFORM_GAP))
 
-	var cfg := LevelLoader.load_level(GameState.current_level)
-	_platform_count = cfg.platform_count
-	_rot_speed = deg_to_rad(cfg.rotation_speed_deg)
-	_phase_duration = cfg.phase_duration
-	_phase_timer = cfg.phase_duration
-	_seg_kind = TowerGen.generate(
-		cfg.platform_count, cfg.segment_count,
-		cfg.gap_pct, cfg.obsidian_pct, cfg.color_bias, cfg.seed_value)
+	_level = LevelLoader.load_level(GameState.current_level)
+	_platform_count = _level.platform_count
+	_segment_count = _level.segment_count
+	_seg_angle = TAU / float(_segment_count)
+	_phase_duration = _level.phase_duration
+	_phase_timer = _level.phase_duration
+	_seg_kind = TowerGen.build(_level)
 
 	_setup_environment()
 	_build_materials()
@@ -104,7 +106,7 @@ func _ready() -> void:
 
 	_ball_y = _platform_y(0) + START_DROP_GAPS * PLATFORM_GAP
 	_cam_look_y = _ball_y
-	GameState.start_level(cfg.level_number)
+	GameState.start_level(_level.level_number)
 
 # --- Construction -----------------------------------------------------------
 
@@ -112,7 +114,7 @@ func _setup_environment() -> void:
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color(0.05, 0.03, 0.10)
+	e.background_color = Color(0.05, 0.03, 0.10) if not _level.is_boss else Color(0.02, 0.015, 0.05)
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(0.5, 0.5, 0.6)
 	e.ambient_light_energy = 0.8
@@ -122,6 +124,8 @@ func _setup_environment() -> void:
 	_dir_light = DirectionalLight3D.new()
 	_dir_light.rotation = Vector3(deg_to_rad(-55), deg_to_rad(-30), 0)
 	_dir_light.light_energy = 1.1
+	if _level.is_boss:
+		_dir_light.light_color = Color(1.0, 0.9, 0.55)  # gold rim (§5.1)
 	add_child(_dir_light)
 
 func _build_materials() -> void:
@@ -149,13 +153,24 @@ func _build_tower() -> void:
 	_tower.name = "Tower"
 	add_child(_tower)
 
+	var base_speed := deg_to_rad(_level.rotation_speed_deg)
 	_broken.clear()
 	_seg_nodes.clear()
+	_platform_nodes.clear()
+	_platform_rot.clear()
+	_platform_speed.clear()
+
 	for i in _platform_count:
+		var pnode := Node3D.new()
+		_tower.add_child(pnode)
+		_platform_nodes.append(pnode)
+		_platform_rot.append(0.0)
+		_platform_speed.append(_band_speed(i, base_speed))
+
 		var broken_row: Array[bool] = []
 		var node_row: Array = []
 		var py := _platform_y(i)
-		for s in SEGMENT_COUNT:
+		for s in _segment_count:
 			broken_row.append(false)
 			var kind: int = _seg_kind[i][s]
 			if kind == PSTypes.Seg.GAP:
@@ -165,7 +180,7 @@ func _build_tower() -> void:
 				var a := (s + 0.5) * _seg_angle
 				seg.position = Vector3(cos(a) * RING_MID, py, sin(a) * RING_MID)
 				seg.rotation.y = -a
-				_tower.add_child(seg)
+				pnode.add_child(seg)
 				node_row.append(seg)
 		_broken.append(broken_row)
 		_seg_nodes.append(node_row)
@@ -179,6 +194,14 @@ func _build_tower() -> void:
 	pad.material_override = _emissive(Color(0.2, 0.9, 0.5), 0.7)
 	pad.position = Vector3(0, _finish_y(), 0)
 	add_child(pad)
+
+## Boss levels split platforms into alternating bands that rotate independently
+## (§5.1). Non-boss levels rotate uniformly.
+func _band_speed(i: int, base_speed: float) -> float:
+	if not _level.is_boss or _level.rotation_variance == 0.0:
+		return base_speed
+	var band := (i / BOSS_BAND_SIZE) % 2
+	return base_speed if band == 0 else -base_speed * _level.rotation_variance
 
 func _make_segment_mesh(mat: StandardMaterial3D) -> MeshInstance3D:
 	var seg := MeshInstance3D.new()
@@ -243,7 +266,6 @@ func _effective_holding() -> bool:
 # --- Per-frame --------------------------------------------------------------
 
 func _process(delta: float) -> void:
-	# Revive countdown ticks in real time (slow-mo already restored).
 	if _state == State.REVIVING and _revive_timer > 0.0:
 		var before := ceili(_revive_timer)
 		_revive_timer -= delta
@@ -254,8 +276,9 @@ func _process(delta: float) -> void:
 			_on_revive_decline()
 
 func _physics_process(delta: float) -> void:
-	_tower_rot += _rot_speed * delta
-	_tower.rotation.y = _tower_rot
+	for i in _platform_count:
+		_platform_rot[i] += _platform_speed[i] * delta
+		_platform_nodes[i].rotation.y = _platform_rot[i]
 	if _state != State.PLAY:
 		return
 
@@ -265,8 +288,6 @@ func _physics_process(delta: float) -> void:
 	_tick_fever(delta)
 
 	var smashing := _effective_holding()
-	var seg_index := _segment_under_ball()
-
 	var prev_bottom := _ball_y - BALL_RADIUS
 	if smashing:
 		_ball_vy = maxf(_ball_vy - SMASH_ACCEL * delta, -SMASH_TERMINAL)
@@ -276,7 +297,7 @@ func _physics_process(delta: float) -> void:
 	var new_bottom := _ball_y - BALL_RADIUS
 
 	if _ball_vy < 0.0:
-		_resolve_descent(prev_bottom, new_bottom, seg_index, smashing)
+		_resolve_descent(prev_bottom, new_bottom, smashing)
 
 	if _state != State.PLAY:
 		return
@@ -289,9 +310,8 @@ func _physics_process(delta: float) -> void:
 	_update_hud()
 
 func _tick_phase(delta: float) -> void:
-	# Phase timer pauses while actively smash-descending (§3.4).
 	if _effective_holding() and _ball_vy < 0.0:
-		return
+		return  # paused while smash-descending (§3.4)
 	_phase_timer -= delta
 	if _phase_timer <= 0.0:
 		_flip_phase()
@@ -328,25 +348,23 @@ func _end_fever() -> void:
 	_fever = false
 	_apply_phase_visuals()
 
-## Sweeps platforms crossed this tick and applies the §3 interaction rules.
-func _resolve_descent(prev_bottom: float, new_bottom: float, seg_index: int, smashing: bool) -> void:
+func _resolve_descent(prev_bottom: float, new_bottom: float, smashing: bool) -> void:
 	for i in _platform_count:
 		var y_top := _platform_y(i) + PLATFORM_THICKNESS * 0.5
 		if not (prev_bottom > y_top and new_bottom <= y_top):
 			continue
+		var seg_index := _segment_under(i)
 		var kind: int = _seg_kind[i][seg_index]
 		if kind == PSTypes.Seg.GAP or _broken[i][seg_index]:
-			continue  # nothing there — fall through
+			continue
 
 		if not smashing:
-			# Idle bounce: any solid (including obsidian) is safe to bounce on.
 			_ball_y = y_top + BALL_RADIUS
 			_ball_vy = _idle_bounce_v
 			return
 
-		# Smashing.
 		if _fever or _invuln_timer > 0.0:
-			_shatter(i, seg_index, kind)          # fever/invuln smashes everything
+			_shatter(i, seg_index, kind)
 			continue
 		if kind == PSTypes.Seg.OBSIDIAN:
 			_die()
@@ -354,7 +372,6 @@ func _resolve_descent(prev_bottom: float, new_bottom: float, seg_index: int, sma
 		if PSTypes.is_matching(kind, _phase):
 			_shatter(i, seg_index, kind)
 			continue
-		# Opposite color while smashing -> hard bounce, not death.
 		_hard_bounce(y_top)
 		return
 
@@ -367,8 +384,7 @@ func _shatter(platform_index: int, seg_index: int, kind: int) -> void:
 		_seg_nodes[platform_index][seg_index] = null
 
 	_chain += 1
-	var points := int(round(_combo_mult()))
-	GameState.add_score(points)
+	GameState.add_score(int(round(_combo_mult())))
 	SaveManager.data["lifetime"]["segments_smashed"] += 1
 	Haptics.light()
 	AudioManager.play_sfx(&"shatter")
@@ -400,17 +416,14 @@ func _die() -> void:
 	AudioManager.play_sfx(&"death")
 	ShatterScript.burst(self, _ball.global_position, Color(1, 0.9, 0.8))
 	_ball.visible = false
-	_dir_light.light_energy = 0.4  # tower dims
+	_dir_light.light_energy = 0.4
 	Engine.time_scale = DEATH_SLOWMO_SCALE
-	# Real-time timer so slow-mo lasts a fixed wall-clock duration.
 	get_tree().create_timer(DEATH_SLOWMO_TIME, true, false, true).timeout.connect(_after_death_slowmo)
 
 func _after_death_slowmo() -> void:
 	Engine.time_scale = 1.0
 	if _state != State.DEAD:
 		return
-	# Only offer revive if it can actually work (§3.6): once/level, and an ad is
-	# available. P1 uses a stubbed rewarded ad that is always "ready".
 	if not _revive_used and _revive_available():
 		_state = State.REVIVING
 		_revive_timer = float(REVIVE_SECONDS)
@@ -419,9 +432,7 @@ func _after_death_slowmo() -> void:
 		_show_game_over()
 
 func _revive_available() -> bool:
-	# P1: stubbed fake ad is always ready. In P5 this becomes
-	# AdManager.is_rewarded_ready().
-	return true
+	return true  # P1 stub; becomes AdManager.is_rewarded_ready() in P5
 
 func _on_revive_accept() -> void:
 	if _state != State.REVIVING:
@@ -446,8 +457,7 @@ func _on_revive_decline() -> void:
 func _show_game_over() -> void:
 	_state = State.FINISHED
 	Engine.time_scale = 1.0
-	var best := SaveManager.get_best_score(GameState.current_level)
-	_hud.show_game_over(GameState.run_score, best)
+	_hud.show_game_over(GameState.run_score, SaveManager.get_best_score(GameState.current_level))
 
 # --- Level clear ------------------------------------------------------------
 
@@ -461,19 +471,21 @@ func _on_level_clear() -> void:
 	GameState.clear_level()
 	SaveManager.record_best_score(GameState.current_level, GameState.run_score)
 	SaveManager.data["lifetime"]["levels_cleared"] += 1
-	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + 1
+	# +1 crate progress normally; a boss clear grants an instant crate (§7.2).
+	var gain := 5 if _level.is_boss else 1
+	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + gain
 	Haptics.heavy()
 	AudioManager.play_sfx(&"level_clear")
 	_hud.flash(Color(0.4, 1, 0.7), 0.4)
-	var best := SaveManager.get_best_score(GameState.current_level)
-	_hud.show_level_clear(GameState.current_level, GameState.run_score, best)
+	_hud.show_level_clear(GameState.current_level, GameState.run_score,
+		SaveManager.get_best_score(GameState.current_level))
 
 # --- Visuals / HUD ----------------------------------------------------------
 
 func _apply_phase_visuals() -> void:
 	var c := PSTypes.phase_color(_phase)
 	if _fever:
-		c = Color(1, 0.95, 0.85)  # white-hot
+		c = Color(1, 0.95, 0.85)
 	_ball_mat.albedo_color = c
 	_ball_mat.emission = c
 	_ball_mat.emission_energy_multiplier = 1.4 if _fever else 0.9
@@ -499,8 +511,7 @@ func _update_hud() -> void:
 	_hud.set_progress(clampf((top - _ball_y) / (top - bottom), 0.0, 1.0))
 	_hud.set_score(GameState.run_score)
 	_hud.set_combo(_combo_mult())
-	var ratio := _phase_timer / _phase_duration
-	_hud.set_phase_ratio(ratio, _phase_timer <= PHASE_WARNING)
+	_hud.set_phase_ratio(_phase_timer / _phase_duration, _phase_timer <= PHASE_WARNING)
 	var fever_ratio := 1.0 if _fever else float(_chain) / float(FEVER_THRESHOLD)
 	_hud.set_fever(fever_ratio, _fever)
 
@@ -526,6 +537,6 @@ func _platform_y(i: int) -> float:
 func _finish_y() -> float:
 	return _platform_y(_platform_count - 1) - PLATFORM_GAP
 
-func _segment_under_ball() -> int:
-	var local := wrapf(-_tower_rot, 0.0, TAU)
-	return int(floor(local / _seg_angle)) % SEGMENT_COUNT
+func _segment_under(i: int) -> int:
+	var local := wrapf(-_platform_rot[i], 0.0, TAU)
+	return int(floor(local / _seg_angle)) % _segment_count

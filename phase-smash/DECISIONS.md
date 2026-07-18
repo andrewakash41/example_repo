@@ -46,3 +46,44 @@ rationale each. Newest at top within a phase.
 - **Idle-bounce constants** (`GRAVITY_IDLE`, `IDLE_BOUNCE_HEIGHT`) chosen to
   land near the §4 targets (≈0.45s period). Provisional greybox feel; formal
   tuning is P1.
+
+## P1 — Core mechanic
+
+- **Fake rewarded ad is always "ready" in P1** so the revive flow is exercised
+  end-to-end. In P5 `_revive_available()` switches to
+  `AdManager.is_rewarded_ready()` and the §3.6 "hide the button if it can't
+  work" rule applies for real.
+- **Phase timer pauses while smash-descending** (holding + descending), which
+  operationalizes "pauses while airborne between platforms during a smash
+  chain" (§3.4) — simple and prevents unfair mid-dive flips.
+- **Score per shatter = round(combo multiplier)**, multiplier `1 + chain/10`
+  capped ×5 (§3.8). Integer rounding keeps it casual/legible.
+
+## P2 — Level system
+
+- **The 1-50 curve is encoded as a function in `LevelLibrary`, not 50 `.tres`
+  files.** The handoff lists `level_001.tres … level_050.tres` (§8.1), but an
+  explicit interpolated curve reads as one tunable progression and avoids 50
+  near-duplicate files. `LevelData.to_dict()` still dumps any level to JSON for
+  the tooling schema (§5.2). Swapping to on-disk resources later is a one-file
+  change in `LevelLoader`.
+- **`opposite_pct` is mapped to a color run-persistence probability**
+  (`LevelData.color_run_bias()`), since "opposite" is phase-relative and can't
+  be baked at authoring time. Longer single-color runs force the player to wait
+  for flips — the intended difficulty lever. Documented in one place to tune.
+- **Winnability guarantee** = each platform has ≥2 circularly-contiguous "safe"
+  (gap or matching-color) segments for *each* phase. Enforced by reroll (≤16),
+  then a force-fix that carves two adjacent gaps. Verified: **0 unwinnable
+  platforms across levels 1-200 and 20k stress seeds**; force-fix fires only
+  ~1.4% (L50) to ~3.3% (L200) of platforms.
+- **Boss towers use per-platform rotation.** Every platform is its own rotating
+  node; boss levels split platforms into alternating 5-platform bands, the
+  second spinning `-1.15×` (opposite direction, faster) for the "independently
+  rotating bands" of §5.1. Boss clear grants +5 crate progress (an instant
+  crate, §7.2).
+- **Harness bot (`tools/harness_bot.gd`) + `run_tests.gd` written but not yet
+  executed for curve tuning.** Godot wasn't installable here (egress policy
+  blocked the download), so the §5.3 targets (e.g. "L50 in ≤5 attempts") still
+  need a real run of `godot --headless -s tools/run_tests.gd` to confirm and
+  tune against. The *correctness* criterion (no unwinnable platforms) is proven
+  independently above.
