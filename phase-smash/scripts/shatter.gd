@@ -1,65 +1,88 @@
-class_name Shatter
+class_name ShatterPool
 extends Node3D
-## A short-lived debris burst spawned when a segment breaks (§6.2: script-driven
-## velocity + gravity, no physics bodies, ~0.8s lifetime, fade out). One node
-## owns all its chunks and frees itself when they expire — nothing to pool yet
-## in P0; pooling comes with the perf pass (§8.4).
+## Pooled debris bursts (§6.2, §8.4). A segment break spawns ~6 script-driven
+## chunks (velocity + gravity, no physics bodies, ~0.8s fade). Fever chains fire
+## ~10 bursts/second, so instead of allocating 6 meshes + 6 materials per burst
+## (the P0 approach, B3) this owns a fixed pool of chunk nodes that share ONE
+## BoxMesh and each keep their OWN reusable material — so alpha fades stay
+## independent while steady-state allocation is zero.
 
 const CHUNK_COUNT := 6
 const LIFETIME := 0.8
 const GRAVITY := 24.0
+const POOL_BURSTS := 14          # ~10 bursts/s * 0.8s lifetime, with headroom
+const CHUNK_SIZE := 0.17
 
-var _chunks: Array = []      # each: {node, vel, spin}
-var _age := 0.0
+var _shared_mesh: BoxMesh
+var _chunks: Array = []           # each: {node, mat, vel, spin, age, active}
+var _rng := RandomNumberGenerator.new()
 
-## Convenience spawner: creates a burst at world `pos`, tinted `color`.
-static func burst(parent: Node, pos: Vector3, color: Color) -> void:
-	var b := Shatter.new()
-	parent.add_child(b)
-	b.global_position = pos
-	b._emit(color)
+func _ready() -> void:
+	_rng.randomize()
+	_shared_mesh = BoxMesh.new()
+	_shared_mesh.size = Vector3(CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE)
+	for i in POOL_BURSTS * CHUNK_COUNT:
+		_chunks.append(_make_chunk())
 
-func _emit(color: Color) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	for i in CHUNK_COUNT:
-		var chunk := MeshInstance3D.new()
-		var mesh := BoxMesh.new()
-		var s := rng.randf_range(0.12, 0.22)
-		mesh.size = Vector3(s, s, s)
-		chunk.mesh = mesh
+func _make_chunk() -> Dictionary:
+	var node := MeshInstance3D.new()
+	node.mesh = _shared_mesh
+	node.visible = false
+	# One material per pooled chunk, reused forever — only its color/alpha change.
+	var mat := StandardMaterial3D.new()
+	mat.emission_enabled = true
+	mat.emission_energy_multiplier = 1.5
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	node.material_override = mat
+	add_child(node)
+	return {"node": node, "mat": mat, "vel": Vector3.ZERO,
+		"spin": Vector3.ZERO, "age": 0.0, "active": false}
 
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = color
-		mat.emission_enabled = true
-		mat.emission = color
-		mat.emission_energy_multiplier = 1.5
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		chunk.material_override = mat
+## Spawn a burst at world `pos`, tinted `color`. Reuses idle pooled chunks; if the
+## pool is momentarily exhausted the burst is simply smaller (never allocates).
+func burst(pos: Vector3, color: Color) -> void:
+	var spawned := 0
+	for c in _chunks:
+		if spawned >= CHUNK_COUNT:
+			break
+		if c["active"]:
+			continue
+		_launch(c, pos, color)
+		spawned += 1
 
-		add_child(chunk)
-		_chunks.append({
-			"node": chunk,
-			"vel": Vector3(
-				rng.randf_range(-2.0, 2.0),
-				rng.randf_range(1.5, 4.0),
-				rng.randf_range(-2.0, 2.0)),
-			"spin": Vector3(
-				rng.randf_range(-8, 8),
-				rng.randf_range(-8, 8),
-				rng.randf_range(-8, 8)),
-		})
+func _launch(c: Dictionary, pos: Vector3, color: Color) -> void:
+	var node: MeshInstance3D = c["node"]
+	node.position = pos
+	node.rotation = Vector3.ZERO
+	var s := _rng.randf_range(0.7, 1.3)
+	node.scale = Vector3(s, s, s)
+	node.visible = true
+	var mat: StandardMaterial3D = c["mat"]
+	mat.albedo_color = color
+	mat.emission = color
+	c["vel"] = Vector3(
+		_rng.randf_range(-2.0, 2.0),
+		_rng.randf_range(1.5, 4.0),
+		_rng.randf_range(-2.0, 2.0))
+	c["spin"] = Vector3(
+		_rng.randf_range(-8, 8),
+		_rng.randf_range(-8, 8),
+		_rng.randf_range(-8, 8))
+	c["age"] = 0.0
+	c["active"] = true
 
 func _process(delta: float) -> void:
-	_age += delta
-	var t: float = clampf(_age / LIFETIME, 0.0, 1.0)
 	for c in _chunks:
+		if not c["active"]:
+			continue
+		c["age"] += delta
+		var t: float = clampf(c["age"] / LIFETIME, 0.0, 1.0)
 		var node: MeshInstance3D = c["node"]
 		c["vel"].y -= GRAVITY * delta
 		node.position += c["vel"] * delta
 		node.rotation += c["spin"] * delta
-		var mat := node.material_override as StandardMaterial3D
-		if mat:
-			mat.albedo_color.a = 1.0 - t
-	if _age >= LIFETIME:
-		queue_free()
+		var mat: StandardMaterial3D = c["mat"]
+		mat.albedo_color.a = 1.0 - t
+		if c["age"] >= LIFETIME:
+			c["active"] = false
+			node.visible = false

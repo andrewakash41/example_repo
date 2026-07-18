@@ -23,7 +23,8 @@ func _ready() -> void:
 	# Privacy options — re-open the UMP consent form (§9.1).
 	box.add_child(UIKit.button("Privacy options", 26, _on_privacy, Vector2(300, 70)))
 
-	box.add_child(UIKit.label("Phase Smash — v0.5 (P5)", 22, Color(1, 1, 1, 0.5)))
+	var version := str(ProjectSettings.get_setting("application/config/version", "0.0"))
+	box.add_child(UIKit.label("Phase Smash — v%s" % version, 22, Color(1, 1, 1, 0.5)))
 	box.add_child(UIKit.label("Audio: CC0/CC-BY — see credits", 20, Color(1, 1, 1, 0.4)))
 	box.add_child(UIKit.button("Back", 28, _on_back, Vector2(200, 72)))
 

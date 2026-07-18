@@ -205,3 +205,47 @@ rationale each. Newest at top within a phase.
   installing the signed AAB, capturing the 6+ screenshots and 30s video, and the
   on-device run. These need Godot 4.3 + Android tooling + a phone, none of which
   were available in this environment.
+
+---
+
+## Improvement plan — R0 (CI) + R1 (bug fixes)
+
+Executing `PHASE_SMASH_IMPROVEMENT_PLAN.md`. Environment still cannot install
+Godot (GitHub release download blocked by egress policy, same as P3/P4), so all
+R1 changes are verified with **gdtoolkit 4.5 `gdparse`/`gdlint` + static review**
+only; the new CI runs the real Godot 4.3 suite on push. Difficulty re-tuning
+(R0 step 4) is deferred to the first real engine run — the curve is untouched
+except for the new per-level Fever threshold.
+
+- **R0 — CI added** (`.github/workflows/ci.yml`): downloads Godot 4.3 headless,
+  runs `tools/run_tests.gd` + `tools/soak.gd`, plus a gdtoolkit parse/lint gate.
+- **B1 — revive race:** added a `REVIVE_PENDING` state entered on accept (timer
+  zeroed) so the countdown can't expire mid-ad; `_do_revive` guards on it.
+- **B2 — windowed tower:** the DATA model (`_seg_kind`/`_broken`/`_platform_rot`/
+  `_platform_speed`) stays full-length so gameplay + harness bot are byte-for-byte
+  unchanged; only the VIEW is windowed (`WINDOW_ABOVE=4`, `WINDOW_BELOW=14` live
+  platforms around the ball, spawned/freed by `_update_window` each physics frame).
+  Rotation still advances for all platforms (cheap) to keep collision deterministic.
+  Draw-call/MultiMesh follow-up left for on-device profiling (§8.4).
+- **B3 — shatter pooling:** `Shatter` (per-burst node) → `ShatterPool` (owned by
+  the game) with a fixed pool of chunk nodes sharing one `BoxMesh`, each keeping
+  its own reused material so alpha fades stay independent. Zero steady-state alloc.
+- **B4 — audio code paths:** gameplay/boss music started in `_ready`; additive
+  Fever stem (`fever.ogg`) faded in/out via `AudioManager.set_fever_layer`; pitch
+  spread on shatter/hard-bounce SFX. **Assets still unsourced** — code no-ops until
+  the CC0/CC-BY OGGs are dropped in `assets/{music,sfx}/` (see CREDITS.md TODO).
+- **B6 — booster refund matrix** (pure `Boosters.refund_on_end`, unit-tested):
+  shield refunds whenever unpopped (game-over / restart / quit); slow-mo refunds
+  on restart only; head-start never refunds. Consumed at level start as before.
+- **B9 — per-level Fever threshold:** new `LevelData.fever_threshold` (10, →12 from
+  L30); consumed by both `game.gd` and `harness_bot.gd` (removes a duplicated const).
+- **B12 — boss 2× crate:** the clear's actual gain is stored and doubled, so a
+  boss's +5 becomes +10 instead of a flat +1.
+- **B14 — no dead ad buttons:** new `AdManager.ad_availability_changed` signal;
+  the 2×-crate and +2-refill buttons hide until a rewarded ad is ready and update live.
+- **Other bugs:** B5 first-launch→L1, B7 version from ProjectSettings, B8 time_scale
+  reset on every screen swap, B10 one-time hints (`hints_seen` + first-opposite
+  slow-mo), B11 phase ring at the ball (torus, brightens on depletion, pulses on
+  warning; true angular-fill shader is a later polish item), B13 harness fever
+  no-op removed, B15 "Open another" crate, B16 skins ScrollContainer + in-place
+  refresh + locked preview, B17 bottom safe-area inset, B18 dead code removed.

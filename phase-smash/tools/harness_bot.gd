@@ -19,7 +19,6 @@ const GRAVITY_IDLE := 40.0
 const IDLE_BOUNCE_HEIGHT := 1.0
 const HARD_BOUNCE_GAPS := 1.5
 const START_DROP_GAPS := 3.0
-const FEVER_THRESHOLD := 10
 const INPUT_LOCK := 0.2
 const BOSS_BAND_SIZE := 5
 const TIMEOUT_S := 90.0
@@ -75,6 +74,7 @@ static func _play_once(level: LevelData, rng: RandomNumberGenerator, latency_s: 
 	var chain := 0
 	var fever := false
 	var fever_grace := 0.0
+	var fever_threshold := level.fever_threshold  # per-level, matches game.gd (B9/B13)
 	var input_lock := 0.0
 	var decide_cd := 0.0
 	var holding := false
@@ -133,14 +133,17 @@ static func _play_once(level: LevelData, rng: RandomNumberGenerator, latency_s: 
 					ball_vy = idle_v
 					break
 				if fever:
+					# Fever: every segment shatters; refresh grace so the chain
+					# keeps the run in Fever (the old `if chain >= FEVER_THRESHOLD:
+					# fever = true` here was a no-op — fever is already true) (B13).
 					broken[key] = true; chain += 1
-					if chain >= FEVER_THRESHOLD: fever = true
+					fever_grace = 1.5
 					continue
 				if kind == PSTypes.Seg.OBSIDIAN:
 					return {"cleared": false, "cause": "obsidian", "duration": t}
 				if PSTypes.is_matching(kind, phase):
 					broken[key] = true; chain += 1
-					if not fever and chain >= FEVER_THRESHOLD:
+					if not fever and chain >= fever_threshold:
 						fever = true; fever_grace = 1.5
 					continue
 				# opposite -> hard bounce

@@ -20,6 +20,10 @@ func on_back_requested() -> void:
 func _toast(text: String) -> void:
 	var l := UIKit.label(text, 26, Color(1, 1, 1, 0.85))
 	l.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	# Give the label real width so the centered text is actually centered on
+	# screen rather than growing rightward from the anchor point (B18).
+	l.offset_left = -320
+	l.offset_right = 320
 	l.offset_top = -160
 	add_child(l)
 	var tw := create_tween()

@@ -3,7 +3,8 @@ extends Control
 ## equip/unequip on tap (showing owned counts), and PLAY -> Game.
 
 var _router: Node
-var _slots: Dictionary = {}  # id -> Button
+var _slots: Dictionary = {}   # id -> Button
+var _refills: Dictionary = {} # id -> Button (the "+2 (Ad)" refill)
 
 func set_router(router: Node) -> void:
 	_router = router
@@ -33,12 +34,24 @@ func _ready() -> void:
 		var b := UIKit.button("", 24, _on_slot.bind(id), Vector2(200, 120))
 		_slots[id] = b
 		col.add_child(b)
-		# "+2 via rewarded ad" refill (§7.1, §9.2 placement 4).
-		col.add_child(UIKit.button("+2 (Ad)", 20, _on_refill.bind(id), Vector2(200, 48)))
+		# "+2 via rewarded ad" refill (§7.1, §9.2 placement 4). Hidden while no
+		# rewarded ad can play so we never show a dead button (§3.6, B14).
+		var refill := UIKit.button("+2 (Ad)", 20, _on_refill.bind(id), Vector2(200, 48))
+		_refills[id] = refill
+		col.add_child(refill)
 		_refresh_slot(id)
 
 	box.add_child(UIKit.button("PLAY", 46, _on_play, Vector2(320, 110)))
 	box.add_child(UIKit.button("Back", 26, _on_back, Vector2(180, 70)))
+	_refresh_refills()
+	AdManager.ad_availability_changed.connect(_refresh_refills)
+
+func _refresh_refills() -> void:
+	var ready := AdManager.is_rewarded_ready()
+	for id in _refills:
+		var b: Button = _refills[id]
+		if is_instance_valid(b):
+			b.visible = ready
 
 func _refresh_slot(id: String) -> void:
 	var info := Boosters.info(id)

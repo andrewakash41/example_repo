@@ -33,6 +33,7 @@ static func default_data() -> Dictionary:
 		"skins_owned": ["default"],
 		"equipped_skin": "default",
 		"settings": {"music": true, "sfx": true, "haptics": true, "lite_fx": false},
+		"hints_seen": {"intro": false, "opposite": false},  # each tutorial hint shows once (B10)
 		"daily": {"date": "", "rewarded_count": 0},  # shared rewarded cap (§9.2)
 		"ads": {
 			"consent_status": "",           # "", "obtained", "declined"

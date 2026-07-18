@@ -28,7 +28,7 @@ var _revive_countdown_label: Label
 func _ready() -> void:
 	layer = 10
 
-	_progress = _make_bar(Control.PRESET_TOP_WIDE, 40, 60, 22)
+	_progress = _make_bar(Control.PRESET_TOP_WIDE, 40, 22)
 	_progress.offset_right = -40
 
 	_score_label = Label.new()
@@ -53,7 +53,7 @@ func _ready() -> void:
 	add_child(_combo_label)
 
 	# Phase indicator: a depleting bar tinted by the current phase.
-	_phase_bar = _make_bar(Control.PRESET_CENTER_BOTTOM, -220, -160, 26)
+	_phase_bar = _make_bar(Control.PRESET_CENTER_BOTTOM, -220, 26)
 	_phase_bar.offset_right = 220
 	_phase_bar.max_value = 1.0
 	_phase_bar.value = 1.0
@@ -105,23 +105,33 @@ func _ready() -> void:
 
 	_apply_safe_area()
 
-## Insets the top-of-screen controls below a display cutout / status bar (§8.5).
-## Approximate: maps the OS safe-area top inset into viewport units.
+## Insets HUD controls away from display cutouts / status bar / gesture-nav bar
+## (§8.5). Maps both the OS safe-area top AND bottom insets into viewport units:
+## top-anchored controls move down, bottom-anchored controls (phase bar, hint,
+## fever strip) move up so they clear the gesture bar (B17).
 func _apply_safe_area() -> void:
 	var safe := DisplayServer.get_display_safe_area()
 	var screen := DisplayServer.screen_get_size()
 	if screen.y <= 0:
 		return
 	var vp := get_viewport().get_visible_rect().size
-	var inset := float(safe.position.y) * (vp.y / float(screen.y))
-	if inset <= 1.0:
-		return
-	for c in [_progress, _score_label, _combo_label, _pause_btn]:
-		if c:
-			c.offset_top += inset
-			c.offset_bottom += inset
+	var scale := vp.y / float(screen.y)
+	var top_inset := float(safe.position.y) * scale
+	var bottom_inset := float(screen.y - (safe.position.y + safe.size.y)) * scale
+	if top_inset > 1.0:
+		for c in [_progress, _score_label, _combo_label, _pause_btn]:
+			if c:
+				c.offset_top += top_inset
+				c.offset_bottom += top_inset
+	if bottom_inset > 1.0:
+		for c in [_phase_bar, _hint_label]:
+			if c:
+				c.offset_top -= bottom_inset
+				c.offset_bottom -= bottom_inset
+		if _fever_bar:  # left strip: pull its bottom up off the gesture bar
+			_fever_bar.offset_bottom -= bottom_inset
 
-func _make_bar(preset: int, top: int, _unused: int, height: int) -> ProgressBar:
+func _make_bar(preset: int, top: int, height: int) -> ProgressBar:
 	var bar := ProgressBar.new()
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(0, height)
@@ -171,6 +181,17 @@ func set_fever(ratio: float, active: bool) -> void:
 
 func hide_hint() -> void:
 	_hint_label.visible = false
+
+## Shows a one-off contextual hint for `seconds`, then fades it (B10). Used for
+## the first-opposite-color "wait for the flip" lesson.
+func show_hint_text(text: String, seconds: float = 2.0) -> void:
+	_hint_label.text = text
+	_hint_label.visible = true
+	_hint_label.modulate = Color(1, 1, 1, 1)
+	var tw := create_tween()
+	tw.tween_interval(seconds)
+	tw.tween_property(_hint_label, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(hide_hint)
 
 func flash(color: Color, strength: float = 0.6) -> void:
 	_flash.color = Color(color.r, color.g, color.b, strength)
@@ -226,9 +247,23 @@ func show_level_clear(level: int, score: int, best: int) -> void:
 	_title(box, "Best  %d" % best, 28, Color(1, 1, 1, 0.7))
 	_button(box, "NEXT", func(): replay_pressed.emit())
 	# Secondary: 2x crate progress via rewarded ad (§3.7, §9.2 placement 3).
+	# Never show a button that can't work — hidden while no rewarded ad is ready,
+	# shown live when one loads (§3.6 everywhere, B14).
 	var crate := _button(box, "▶ 2× CRATE (AD)", func(): crate2x_pressed.emit(), Color(1, 0.85, 0.3))
 	crate.name = "Crate2xButton"
+	crate.visible = AdManager.is_rewarded_ready()
+	if not AdManager.ad_availability_changed.is_connected(_refresh_crate2x_visibility):
+		AdManager.ad_availability_changed.connect(_refresh_crate2x_visibility)
 	_button(box, "HOME", func(): home_pressed.emit())
+
+## Live-update the 2x-crate button as rewarded readiness changes (B14). Kept off
+## once used ("2× claimed").
+func _refresh_crate2x_visibility() -> void:
+	if not (_overlay and is_instance_valid(_overlay)):
+		return
+	var b := _overlay.find_child("Crate2xButton", true, false)
+	if b and not b.disabled:
+		b.visible = AdManager.is_rewarded_ready()
 
 ## Disables the 2x-crate button after it's been used (max 1/level).
 func disable_crate2x() -> void:
@@ -290,15 +325,6 @@ func show_game_over(score: int, best: int) -> void:
 	_title(box, "Best  %d" % best, 28, Color(1, 1, 1, 0.7))
 	_button(box, "RETRY", func(): replay_pressed.emit())
 	_button(box, "HOME", func(): home_pressed.emit())
-
-## Simple modal shown while a (stubbed) rewarded ad "plays" in P1.
-func show_fake_ad(on_done: Callable) -> void:
-	var box := _new_overlay(0.9)
-	_title(box, "[ AD ]", 56, Color(1, 1, 1, 0.85))
-	_title(box, "rewarded ad playing…", 28, Color(1, 1, 1, 0.6))
-	var tw := create_tween()
-	tw.tween_interval(1.0)
-	tw.tween_callback(on_done)
 
 func clear_overlay() -> void:
 	_clear_overlay()

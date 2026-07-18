@@ -17,7 +17,13 @@ var _current: Node
 func _ready() -> void:
 	# UMP consent on first launch, before any ad can serve (§9.1).
 	AdManager.request_consent()
-	go_to_home()
+	# First launch drops the player straight into Level 1 after consent (§10.9);
+	# every later session opens on Home. sessions_started is bumped to 1 by
+	# AdManager on the first run (B5).
+	if int(SaveManager.data["ads"].get("sessions_started", 0)) <= 1:
+		go_to_game()
+	else:
+		go_to_home()
 
 func go_to_home() -> void: _swap("home")
 func go_to_prelevel() -> void: _swap("prelevel")
@@ -34,6 +40,11 @@ func _notification(what: int) -> void:
 			_current.on_back_requested()
 
 func _swap(key: String) -> void:
+	# Defensive reset (B8): any screen can be left mid hit-stop / slow-mo / pause
+	# (e.g. a timer frees the game scene at 0.4x). Clear global time state here so
+	# a stray leak can never freeze or slow the whole app across a screen swap.
+	Engine.time_scale = 1.0
+	get_tree().paused = false
 	if _current and is_instance_valid(_current):
 		_current.queue_free()
 	var scene: PackedScene = load(SCENES[key])

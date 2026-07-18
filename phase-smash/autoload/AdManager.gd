@@ -7,6 +7,10 @@ extends Node
 ## used until real IDs are injected via data/ad_config.tres (§12).
 
 signal consent_updated
+## Emitted whenever rewarded/interstitial readiness may have changed, so UI can
+## hide/show ad-gated buttons live instead of showing a button that can't work
+## (§3.6 applied everywhere, B14).
+signal ad_availability_changed
 
 ## Package identifier — the single source of truth for the app id (§2, §13).
 const APPLICATION_ID := "com.andrew.phasesmash"
@@ -66,6 +70,8 @@ func _set_consent(status: String) -> void:
 	SaveManager.data["ads"]["consent_status"] = status
 	SaveManager.save_game()
 	consent_updated.emit()
+	# Consent gates every placement, so readiness effectively just changed (B14).
+	ad_availability_changed.emit()
 
 # --- Per-run notifications --------------------------------------------------
 
@@ -164,14 +170,27 @@ func _present_rewarded(after: Callable) -> void:
 
 func _reload_interstitial() -> void:
 	if _has_plugin():
-		_interstitial_ready = false
+		_set_interstitial_ready(false)
 		_plugin_load_interstitial()
 	# Stub keeps it "ready".
 
 func _reload_rewarded() -> void:
 	if _has_plugin():
-		_rewarded_ready = false
+		_set_rewarded_ready(false)
 		_plugin_load_rewarded()
+
+## Readiness setters emit ad_availability_changed only on a real transition (B14).
+func _set_rewarded_ready(v: bool) -> void:
+	if v == _rewarded_ready:
+		return
+	_rewarded_ready = v
+	ad_availability_changed.emit()
+
+func _set_interstitial_ready(v: bool) -> void:
+	if v == _interstitial_ready:
+		return
+	_interstitial_ready = v
+	ad_availability_changed.emit()
 
 func next_backoff(current: float) -> float:
 	# 5s -> 60s exponential (pure, testable).

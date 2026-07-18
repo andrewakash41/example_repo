@@ -51,7 +51,15 @@ func _reveal() -> void:
 	var box := UIKit.center_box(self, 24)
 	box.add_child(UIKit.label("YOU GOT", 34, Color(1, 1, 1, 0.6)))
 	box.add_child(UIKit.label(_reward_text(), 44, Color(1, 0.85, 0.3)))
+	# A boss +5 (or a 2x-crate) can bank enough progress for several crates; let
+	# the player open them all here instead of round-tripping through Home (B15).
+	if Crates.can_open(SaveManager.data):
+		box.add_child(UIKit.button("Open another", 32, _on_open_another, Vector2(280, 84)))
 	box.add_child(UIKit.button("Nice!", 34, _on_done, Vector2(240, 84)))
+
+func _on_open_another() -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	_router.go_to_crate()  # reloads the crate screen, drawing the next reward
 
 func _reward_text() -> String:
 	match _reward["type"]:

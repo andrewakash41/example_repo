@@ -11,6 +11,7 @@ extends Resource
 @export var rotation_speed_deg: float = 20.0  # magnitude+sign; sign alternates
 @export var rotation_variance: float = 0.0    # boss only: per-band multiplier
 @export var phase_duration: float = 2.5       # 2.5 -> 1.6
+@export var fever_threshold: int = 10         # chain to trigger Fever; 12 from L30+ (§4)
 @export var obsidian_pct: float = 0.0         # 0 -> 0.28, hard cap 0.35
 @export var opposite_pct: float = 0.15        # 0.15 -> 0.40 (drives color runs)
 @export var gap_pct: float = 0.10             # ~constant
@@ -35,6 +36,7 @@ func to_dict() -> Dictionary:
 		"rotation_speed_deg": rotation_speed_deg,
 		"rotation_variance": rotation_variance,
 		"phase_duration": phase_duration,
+		"fever_threshold": fever_threshold,
 		"obsidian_pct": obsidian_pct,
 		"opposite_pct": opposite_pct,
 		"gap_pct": gap_pct,

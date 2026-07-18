@@ -60,6 +60,19 @@ static func consume_equipped(data: Dictionary) -> Dictionary:
 			active[id] = true
 	return active
 
+## Which consumed boosters to return when a run ends before their effect paid off
+## (B6). `consumed` is the set taken at level start; `shield_unpopped` is true if
+## the shield was never spent; `on_restart` is true for a restart (vs game-over or
+## quit-to-home). Matrix: shield refunds whenever unpopped; slow-mo refunds only on
+## restart; head-start never refunds (the skip was already granted). Pure/testable.
+static func refund_on_end(consumed: Dictionary, shield_unpopped: bool, on_restart: bool) -> Array:
+	var out: Array = []
+	if consumed.has("shield") and shield_unpopped:
+		out.append("shield")
+	if on_restart and consumed.has("slow_mo"):
+		out.append("slow_mo")
+	return out
+
 ## Award the periodic free shield if enough clears have accumulated.
 static func on_level_clear(data: Dictionary) -> void:
 	var c := int(data.get("clears_since_free_shield", 0)) + 1

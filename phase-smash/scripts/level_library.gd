@@ -33,6 +33,7 @@ static func _author_curve(d: LevelData, n: int) -> void:
 	d.platform_count = int(round(lerpf(25.0, 60.0, t)))
 	d.segment_count = 8 if n < 25 else 10
 	d.phase_duration = lerpf(2.5, 1.6, t)
+	d.fever_threshold = 10 if n < 30 else 12   # §4: harder to earn Fever late
 	d.gap_pct = 0.10
 
 	# Obsidian: none L1-2, sparse (<=8%) through L10, then ramp to 0.28 by L50.
@@ -57,6 +58,7 @@ static func _procedural(d: LevelData, n: int) -> void:
 	d.platform_count = int(round(lerpf(60.0, 80.0, t)))
 	d.segment_count = 10
 	d.phase_duration = lerpf(1.6, 1.4, t)
+	d.fever_threshold = 12
 	d.gap_pct = 0.10
 	d.obsidian_pct = minf(lerpf(0.28, 0.32, t), 0.35)
 	d.opposite_pct = lerpf(0.40, 0.44, t)
