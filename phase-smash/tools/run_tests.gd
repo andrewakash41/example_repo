@@ -9,7 +9,7 @@ func _initialize() -> void:
 	var failed_total := 0
 
 	print("\n=== Tests ===")
-	for res in [TestTowerGenerator.run(), TestSave.run(), TestCrates.run()]:
+	for res in [TestTowerGenerator.run(), TestSave.run(), TestCrates.run(), TestAdPolicy.run()]:
 		for line in res[2]:
 			print("  ", line)
 		print("  -> %d passed, %d failed" % [res[0], res[1]])

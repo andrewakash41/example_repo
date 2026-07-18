@@ -15,6 +15,8 @@ const SCENES := {
 var _current: Node
 
 func _ready() -> void:
+	# UMP consent on first launch, before any ad can serve (§9.1).
+	AdManager.request_consent()
 	go_to_home()
 
 func go_to_home() -> void: _swap("home")

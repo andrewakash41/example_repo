@@ -9,6 +9,26 @@ See [`../PHASE_SMASH_HANDOFF.md`](../PHASE_SMASH_HANDOFF.md) for the full design
 and the milestone plan (P0–P7). Executor decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
+## Status — P5 (Ads & consent)
+
+On top of P4:
+
+- **Frequency-cap policy** (`AdPolicy`, pure + unit-tested): not-before-L4, ≥90s
+  interval, ≥1-level gap, no interstitial within 30s of a rewarded, skip if a
+  rewarded was watched that level, first-session protection, shared 6/day
+  rewarded cap.
+- **AdManager**: UMP consent (first launch + Settings → Privacy options),
+  preload/backoff scaffold, policy gating, all touchpoints to the poing-studios
+  AdMob plugin isolated behind `_has_plugin()` — silent stubs when absent, so the
+  build runs and plays fully offline here.
+- **Placements**: post-level interstitial (NEXT tap), revive rewarded, 2× crate
+  rewarded, booster-refill rewarded. Google **test** IDs via `data/ad_config.tres`
+  (real IDs injected at release); banner off behind a flag.
+
+Cap logic proven in isolation; on-device AdMob display + airplane-mode
+verification are the remaining §9 acceptance items (need Android hardware + the
+plugin).
+
 ## Status — P4 (Meta-game & persistence)
 
 On top of P3:

@@ -88,6 +88,8 @@ var _invuln_timer := 0.0
 var _revive_used := false
 var _revive_timer := 0.0
 var _cleared := false
+var _cleared_level := 0
+var _crate2x_used := false
 
 var _cam_look_y := 0.0
 var _idle_bounce_v := 0.0
@@ -147,6 +149,7 @@ func _ready() -> void:
 	if active.has("head_start"):
 		_apply_head_start()
 	_cam_look_y = _ball_y
+	AdManager.notify_level_started()
 	GameState.start_level(_level.level_number)
 
 ## Auto-clears the top fraction of the tower (§7.1). Segments there are removed
@@ -325,6 +328,7 @@ func _build_hud() -> void:
 	_hud.replay_pressed.connect(_on_replay)
 	_hud.revive_pressed.connect(_on_revive_accept)
 	_hud.revive_declined.connect(_on_revive_decline)
+	_hud.crate2x_pressed.connect(_on_crate_2x)
 
 # --- Input ------------------------------------------------------------------
 
@@ -568,13 +572,14 @@ func _after_death_slowmo() -> void:
 		_show_game_over()
 
 func _revive_available() -> bool:
-	return true  # P1 stub; becomes AdManager.is_rewarded_ready() in P5
+	# §3.6: only offer revive if a rewarded ad can actually play.
+	return AdManager.is_rewarded_ready()
 
 func _on_revive_accept() -> void:
 	if _state != State.REVIVING:
 		return
-	_revive_used = true
-	_hud.show_fake_ad(_do_revive)
+	_revive_used = true  # max 1/level (§9.2 placement 2)
+	AdManager.show_rewarded(AdConfig.Placement.REVIVE, _do_revive, _show_game_over)
 
 func _do_revive() -> void:
 	_hud.clear_overlay()
@@ -605,6 +610,8 @@ func _on_level_clear() -> void:
 	_ball.visible = true
 	_ball.position.y = _finish_y() + BALL_RADIUS + 0.15
 	var cleared_level := GameState.current_level
+	_cleared_level = cleared_level
+	AdManager.notify_level_completed()
 	GameState.clear_level()
 	SaveManager.record_best_score(cleared_level, GameState.run_score)
 	SaveManager.data["lifetime"]["levels_cleared"] += 1
@@ -685,8 +692,34 @@ func _on_replay() -> void:
 	# After a clear the level was already advanced (§ _on_level_clear), so NEXT
 	# just reloads at the new current level; after a game over it retries the same.
 	Engine.time_scale = 1.0
+	if _cleared:
+		# Post-level interstitial gate on the NEXT tap (§9.2 placement 1). Always
+		# proceeds whether or not an ad shows (fail-silent).
+		AdManager.maybe_show_interstitial(_cleared_level, _goto_game)
+	else:
+		_goto_game()
+
+func _goto_game() -> void:
 	if _router and _router.has_method("go_to_game"):
 		_router.go_to_game()
+
+## 2x crate progress via rewarded ad on the level-clear screen (§3.7, §9.2).
+func _on_crate_2x() -> void:
+	if _crate2x_used:
+		return
+	_crate2x_used = true
+	AdManager.show_rewarded(AdConfig.Placement.CRATE_2X, _grant_crate_2x, _on_crate_2x_fail)
+
+func _grant_crate_2x() -> void:
+	# Doubles this clear's crate contribution: +1 more on top of the +1 already
+	# granted at clear (§7.2).
+	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + 1
+	SaveManager.save_game()
+	_hud.disable_crate2x()
+	AudioManager.play_sfx(&"crate_open")
+
+func _on_crate_2x_fail() -> void:
+	_crate2x_used = false  # allow retry if the ad simply wasn't available
 
 ## Auto-pause + persist when the app loses focus (§8.2 / §8.3): never die to a
 ## phone call, and never lose progress on a kill.

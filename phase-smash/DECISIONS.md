@@ -136,3 +136,32 @@ rationale each. Newest at top within a phase.
   correctness and the actual feel still need a first Godot editor run — the
   engine was not installable in this environment (egress policy blocked the
   download).
+
+## P5 — Ads & consent
+
+- **Frequency caps are pure functions** (`AdPolicy`) over an explicit state dict,
+  so every §9.2 rule is unit-testable without the plugin: not-before-L4, ≥90s
+  interval, ≥1-level gap, no interstitial within 30s of a rewarded, skip if a
+  rewarded was watched that level, first-session first-4-levels protection, and
+  the shared 6/day rewarded cap on placements 4-5. Verified — all cases pass
+  (standalone sim + `tests/test_ad_policy.gd`).
+- **Plugin is fully abstracted behind `_has_plugin()`** (returns false here). All
+  poing-studios AdMob touchpoints are isolated in clearly-marked `_plugin_*`
+  hooks; when the plugin isn't present, ads degrade to silent stubs so gameplay
+  never blocks and offline play works. On Android, `_has_plugin()` becomes the
+  real singleton check and the hooks are wired to the plugin API (§9.1).
+- **Google TEST ad unit IDs** ship as `AdConfig` defaults / `data/ad_config.tres`;
+  real IDs are injected into that resource at release (§12) — no ID hardcoded
+  elsewhere. Banner stays behind `banner_enabled=false` (§9.2).
+- **Consent (UMP)**: requested on first launch from `main`, re-openable via
+  Settings → Privacy options. Both "obtained" and "declined" allow ads
+  (declined ⇒ non-personalized); an unset status withholds ads until the flow
+  completes.
+- **Placements wired**: post-level interstitial on the NEXT tap (fail-silent,
+  always proceeds), revive rewarded (max 1/level, only offered when
+  `is_rewarded_ready()`), 2× crate rewarded on the clear screen (max 1/level),
+  booster refill rewarded on pre-level (+2, daily-capped).
+- **Still needs a device run** for the actual AdMob plugin + real test-ad
+  display and airplane-mode verification — the acceptance items that require
+  Android hardware (§9 accept). The cap logic they'd exercise is already proven
+  in isolation.

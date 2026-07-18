@@ -24,9 +24,14 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 16)
 	box.add_child(row)
 	for id in Boosters.IDS:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 6)
+		row.add_child(col)
 		var b := UIKit.button("", 24, _on_slot.bind(id), Vector2(200, 120))
 		_slots[id] = b
-		row.add_child(b)
+		col.add_child(b)
+		# "+2 via rewarded ad" refill (§7.1, §9.2 placement 4).
+		col.add_child(UIKit.button("+2 (Ad)", 20, _on_refill.bind(id), Vector2(200, 48)))
 		_refresh_slot(id)
 
 	box.add_child(UIKit.button("PLAY", 46, _on_play, Vector2(320, 110)))
@@ -44,6 +49,17 @@ func _refresh_slot(id: String) -> void:
 func _on_slot(id: String) -> void:
 	AudioManager.play_sfx(&"ui_tap")
 	Boosters.toggle_equip(SaveManager.data, id)
+	SaveManager.save_game()
+	_refresh_slot(id)
+
+func _on_refill(id: String) -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	AdManager.show_rewarded(
+		AdConfig.Placement.BOOSTER_REFILL,
+		_grant_refill.bind(id))
+
+func _grant_refill(id: String) -> void:
+	Boosters.grant(SaveManager.data, id, 2)
 	SaveManager.save_game()
 	_refresh_slot(id)
 

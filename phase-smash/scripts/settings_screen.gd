@@ -17,9 +17,16 @@ func _ready() -> void:
 	_toggle(box, "Haptics", "haptics")
 	_toggle(box, "Lite FX", "lite_fx")
 
-	box.add_child(UIKit.label("Phase Smash — v0.4 (P4)", 22, Color(1, 1, 1, 0.5)))
+	# Privacy options — re-open the UMP consent form (§9.1).
+	box.add_child(UIKit.button("Privacy options", 26, _on_privacy, Vector2(300, 70)))
+
+	box.add_child(UIKit.label("Phase Smash — v0.5 (P5)", 22, Color(1, 1, 1, 0.5)))
 	box.add_child(UIKit.label("Audio: CC0/CC-BY — see credits", 20, Color(1, 1, 1, 0.4)))
 	box.add_child(UIKit.button("Back", 28, _on_back, Vector2(200, 72)))
+
+func _on_privacy() -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	AdManager.show_privacy_options()
 
 func _toggle(box: VBoxContainer, label: String, key: String) -> void:
 	var b := CheckButton.new()

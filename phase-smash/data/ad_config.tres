@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AdConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ad_config.gd" id="1_cfg"]
+
+[resource]
+script = ExtResource("1_cfg")
+use_test_ids = true
+real_app_id = ""
+real_interstitial_id = ""
+real_rewarded_id = ""
+real_banner_id = ""
+banner_enabled = false

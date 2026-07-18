@@ -9,6 +9,7 @@ signal home_pressed
 signal replay_pressed
 signal revive_pressed
 signal revive_declined
+signal crate2x_pressed
 
 var _progress: ProgressBar
 var _score_label: Label
@@ -190,7 +191,18 @@ func show_level_clear(level: int, score: int, best: int) -> void:
 	_title(box, "Score  %d" % score, 36)
 	_title(box, "Best  %d" % best, 28, Color(1, 1, 1, 0.7))
 	_button(box, "NEXT", func(): replay_pressed.emit())
+	# Secondary: 2x crate progress via rewarded ad (§3.7, §9.2 placement 3).
+	var crate := _button(box, "▶ 2× CRATE (AD)", func(): crate2x_pressed.emit(), Color(1, 0.85, 0.3))
+	crate.name = "Crate2xButton"
 	_button(box, "HOME", func(): home_pressed.emit())
+
+## Disables the 2x-crate button after it's been used (max 1/level).
+func disable_crate2x() -> void:
+	if _overlay and is_instance_valid(_overlay):
+		var b := _overlay.find_child("Crate2xButton", true, false)
+		if b:
+			b.disabled = true
+			b.text = "2× claimed"
 
 ## Revive offer with a live countdown. The caller ticks it via set_revive_countdown.
 func show_revive(seconds: int) -> void:

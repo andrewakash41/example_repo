@@ -33,7 +33,14 @@ static func default_data() -> Dictionary:
 		"skins_owned": ["default"],
 		"equipped_skin": "default",
 		"settings": {"music": true, "sfx": true, "haptics": true, "lite_fx": false},
-		"daily": {"date": "", "rewarded_count": 0},  # ad caps (P5)
+		"daily": {"date": "", "rewarded_count": 0},  # shared rewarded cap (§9.2)
+		"ads": {
+			"consent_status": "",           # "", "obtained", "declined"
+			"sessions_started": 0,
+			"last_interstitial_time": 0.0,
+			"last_interstitial_level": 0,
+			"last_rewarded_time": 0.0,
+		},
 	}
 
 # --- Load / save (file IO) --------------------------------------------------
