@@ -20,6 +20,13 @@ func _ready() -> void:
 	_toggle(box, Strings.t("settings_haptics"), "haptics")
 	_toggle(box, Strings.t("settings_lite_fx"), "lite_fx")
 
+	# Remove Ads IAP (E1): show the purchase button until owned, then a status line.
+	if AdManager.has_remove_ads():
+		box.add_child(UIKit.label("✓ Ads removed — thank you!", 24, Color(0.4, 1, 0.6)))
+	else:
+		box.add_child(UIKit.button("Remove Ads  %s" % AdManager.REMOVE_ADS_PRICE, 26, _on_remove_ads, Vector2(340, 70)))
+		box.add_child(UIKit.button("Restore purchases", 22, _on_restore, Vector2(300, 60)))
+
 	# Privacy options — re-open the UMP consent form (§9.1).
 	box.add_child(UIKit.button(Strings.t("settings_privacy"), 26, _on_privacy, Vector2(300, 70)))
 
@@ -31,6 +38,18 @@ func _ready() -> void:
 func _on_privacy() -> void:
 	AudioManager.play_sfx(&"ui_tap")
 	AdManager.show_privacy_options()
+
+func _on_remove_ads() -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	AdManager.purchase_remove_ads(_rebuild)
+
+func _on_restore() -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	AdManager.restore_purchases()
+
+## Rebuild the screen so the Remove Ads control reflects the new entitlement.
+func _rebuild() -> void:
+	_router.go_to_settings()
 
 func _toggle(box: VBoxContainer, label: String, key: String) -> void:
 	var b := CheckButton.new()

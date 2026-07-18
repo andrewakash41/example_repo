@@ -48,7 +48,44 @@ func _ready() -> void:
 		_tiles[skin.id] = tile
 		_grid.add_child(tile)
 
+	_build_trails(root)
 	root.add_child(UIKit.button("Back", 28, _on_back, Vector2(180, 72)))
+
+# --- Trail cosmetic slot (E6) ----------------------------------------------
+
+var _trail_row: HBoxContainer
+
+func _build_trails(root: VBoxContainer) -> void:
+	root.add_child(UIKit.label("TRAILS", 32, Color(0.7, 0.9, 1)))
+	_trail_row = HBoxContainer.new()
+	_trail_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_trail_row.add_theme_constant_override("separation", 10)
+	root.add_child(_trail_row)
+	_refresh_trails()
+
+func _refresh_trails() -> void:
+	for c in _trail_row.get_children():
+		c.queue_free()
+	var equipped: String = SaveManager.data.get("equipped_trail", "none")
+	for tr in Trails.all():
+		var unlocked := Trails.is_unlocked(SaveManager.data, tr.id)
+		var text := tr.name
+		if tr.id == equipped:
+			text += "\n[ON]"
+		elif not unlocked:
+			text += "\n🔒 L%d" % Trails.unlock_level(tr.id)
+		var b := UIKit.button(text, 20, _on_trail.bind(tr.id, unlocked), Vector2(120, 90))
+		b.add_theme_color_override("font_color",
+			Color(0.3, 1, 0.6) if tr.id == equipped else (Color(1, 1, 1, 0.9) if unlocked else Color(1, 1, 1, 0.45)))
+		_trail_row.add_child(b)
+
+func _on_trail(id: String, unlocked: bool) -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	if not unlocked:
+		return
+	SaveManager.data["equipped_trail"] = id
+	SaveManager.save_game()
+	_refresh_trails()
 
 func _make_tile(skin) -> Button:
 	var b := Button.new()

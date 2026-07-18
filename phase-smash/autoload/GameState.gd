@@ -10,6 +10,15 @@ signal ball_died(level_number: int)
 ## Highest level the player can currently start. Persisted by SaveManager later.
 var current_level: int = 1
 
+## Weekly Challenge mode (E5): when set, the game loads `weekly_level` instead of
+## the campaign level and records the score against the weekly best, not progress.
+var weekly_mode: bool = false
+var weekly_level: LevelData = null
+
+## Replay mode (E3): replaying an already-cleared level. Best score still records,
+## but crate progress is half-rate and campaign progression does not advance.
+var replay_mode: bool = false
+
 ## Score for the level in progress (reset on level start).
 var run_score: int = 0
 

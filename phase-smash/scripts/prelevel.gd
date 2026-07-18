@@ -81,6 +81,8 @@ func _grant_refill(id: String) -> void:
 
 func _on_play() -> void:
 	AudioManager.play_sfx(&"ui_tap")
+	GameState.weekly_mode = false   # frontier run: campaign mode (E3/E5)
+	GameState.replay_mode = false
 	GameState.current_level = int(SaveManager.data["highest_level"])
 	_router.go_to_game()
 

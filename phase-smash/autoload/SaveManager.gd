@@ -34,6 +34,14 @@ static func default_data() -> Dictionary:
 		"equipped_skin": "default",
 		"settings": {"music": true, "sfx": true, "haptics": true, "lite_fx": false},
 		"hints_seen": {"intro": false, "opposite": false},  # each tutorial hint shows once (B10)
+		# --- v1.1 feature state (R5) ---
+		"entitlements": {"remove_ads": false},        # E1 Remove Ads IAP
+		"streak": {"date": "", "count": 0},            # E2 daily streak
+		"missions_claimed": [],                        # E4 claimed mission ids
+		"weekly": {"week": "", "best": 0},             # E5 weekly challenge best
+		"trails_owned": ["none"],                      # E6 trail cosmetic slot
+		"equipped_trail": "none",
+		"lifetime_ext": {"fever_triggers": 0, "bosses_cleared": 0},  # E4 mission counters
 		"daily": {"date": "", "rewarded_count": 0},  # shared rewarded cap (§9.2)
 		"ads": {
 			"consent_status": "",           # "", "obtained", "declined"

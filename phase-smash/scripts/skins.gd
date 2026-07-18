@@ -34,6 +34,13 @@ static func all() -> Array:
 		_s("ember", "Ember", Color(1.0, 0.5, 0.35), 0.2, 1.2),
 		_s("frost", "Frost", Color(0.8, 0.95, 1.0), 0.3, 1.0),
 		_s("neon", "Neon", Color(0.8, 1.0, 0.2), 0.1, 1.4),
+		# v1.1 cosmetic depth (E6): 6 more to keep crates exciting for collectors.
+		_s("magma", "Magma", Color(0.9, 0.25, 0.1), 0.3, 1.5),
+		_s("aqua", "Aqua", Color(0.2, 0.7, 0.9), 0.5, 1.0),
+		_s("rose", "Rose Quartz", Color(1.0, 0.6, 0.75), 0.4, 0.9),
+		_s("obsidian", "Obsidian", Color(0.15, 0.15, 0.2), 0.8, 0.5),
+		_s("solar", "Solar", Color(1.0, 0.9, 0.4), 0.6, 1.6),
+		_s("nebula", "Nebula", Color(0.5, 0.3, 0.9), 0.3, 1.3),
 	]
 
 static func get_skin(id: String) -> Skin:

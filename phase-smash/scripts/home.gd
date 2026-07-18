@@ -62,6 +62,19 @@ func _ready() -> void:
 	row.add_child(UIKit.button(Strings.t("btn_skins"), 30, _on_skins, Vector2(180, 78)))
 	row.add_child(UIKit.button(Strings.t("btn_settings"), 30, _on_settings, Vector2(180, 78)))
 
+	# Levels (select/replay + Weekly) and Missions (E3/E4/E5).
+	var row2 := HBoxContainer.new()
+	row2.alignment = BoxContainer.ALIGNMENT_CENTER
+	row2.add_theme_constant_override("separation", 18)
+	box.add_child(row2)
+	row2.add_child(UIKit.button("Levels", 30, _on_levels, Vector2(180, 78)))
+	var claimable := Missions.claimable_count(SaveManager.data)
+	var missions_label := "Missions" if claimable == 0 else "Missions (%d)" % claimable
+	var missions_btn := UIKit.button(missions_label, 30, _on_missions, Vector2(180, 78))
+	if claimable > 0:
+		missions_btn.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
+	row2.add_child(missions_btn)
+
 	# Booster count strip (D3).
 	var bstrip := HBoxContainer.new()
 	bstrip.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -105,3 +118,11 @@ func _on_settings() -> void:
 func _on_crate() -> void:
 	AudioManager.play_sfx(&"ui_tap")
 	_router.go_to_crate()
+
+func _on_levels() -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	_router.go_to_level_select()
+
+func _on_missions() -> void:
+	AudioManager.play_sfx(&"ui_tap")
+	_router.go_to_missions()

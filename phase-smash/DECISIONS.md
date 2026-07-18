@@ -311,3 +311,35 @@ except for the new per-level Fever threshold.
   flow, every placement with Google test ids, airplane-mode behavior, on-device
   profiling of B2/B3 (draw calls, p95 frame time, 50-level memory soak), signed AAB
   build, and the release-pack asset refresh.
+
+## R5 — v1.1 features (E1–E6 built; E7/E8/E9 = documented defaults)
+
+New save keys added (merge_defaults back-fills existing saves): entitlements,
+streak, missions_claimed, weekly, trails_owned/equipped_trail, lifetime_ext.
+
+- **E1 — Remove Ads IAP:** entitlement in `entitlements.remove_ads`;
+  `AdManager.maybe_show_interstitial` early-returns when entitled (rewarded ads
+  stay). Google Play Billing behind a `_has_billing()` seam mirroring the ad
+  plugin; desktop stub grants immediately so the flow is testable. Settings hosts
+  Buy ($2.99 default) + Restore. Real purchase-validation callback wired for device.
+- **E2 — Daily streak:** `DailyStreak` (pure, tested) — first clear each day adds
+  +1/+2/+3 (capped) crate progress; unit-tested ramp + gap reset.
+- **E3 — Level select + replay:** new `level_select` screen lists reached levels
+  with best scores; replaying a past level earns half crate (min 1) and does NOT
+  advance progression or mission counters (`GameState.replay_mode`).
+- **E4 — Missions:** `Missions` (pure, tested) — 13 data-driven tiered missions
+  reading existing `lifetime`/`lifetime_ext` counters; `missions` screen shows
+  progress + Claim; Home shows a claimable badge. Added counters: fever_triggers,
+  bosses_cleared.
+- **E5 — Weekly Challenge:** `WeeklyChallenge` (pure, tested) — deterministic
+  week-seeded tower (anchor L40), own best score, +2 crate on clear, no backend.
+  Entry on the level-select screen; `GameState.weekly_mode`.
+- **E6 — Cosmetic depth:** 6 more skins (18 total) + a `Trails` second cosmetic
+  slot (5 styles, unlock every 10 clears) applied to the ball ribbon; equip strip
+  on the Skins screen.
+- **E7 leaderboards — SKIPPED** (owner default: adds a network SDK + privacy surface).
+- **E8 analytics — none at launch** (owner default: privacy-first; revisit post-launch
+  with aggregate-only). No SDK added.
+- **E9 — no banners** (reaffirmed; the config flag stays off).
+
+Tests: `tests/test_features.gd` (E2/E4/E5) added to run_tests.gd.

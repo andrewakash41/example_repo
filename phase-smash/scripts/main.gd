@@ -10,6 +10,8 @@ const SCENES := {
 	"skins": "res://scenes/skins.tscn",
 	"settings": "res://scenes/settings.tscn",
 	"crate": "res://scenes/crate.tscn",
+	"level_select": "res://scenes/level_select.tscn",
+	"missions": "res://scenes/missions.tscn",
 }
 
 var _current: Node
@@ -35,6 +37,8 @@ func go_to_game() -> void: _swap("game")
 func go_to_skins() -> void: _swap("skins")
 func go_to_settings() -> void: _swap("settings")
 func go_to_crate() -> void: _swap("crate")
+func go_to_level_select() -> void: _swap("level_select")
+func go_to_missions() -> void: _swap("missions")
 
 ## Android back gesture / window back request (§8.5): hand it to the active
 ## screen, which decides (game pauses, menus go back, home double-taps to exit).

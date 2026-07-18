@@ -7,6 +7,8 @@ extends Node
 ## used until real IDs are injected via data/ad_config.tres (§12).
 
 signal consent_updated
+## Emitted when an entitlement changes (Remove Ads purchased/restored, E1).
+signal purchases_updated
 ## Emitted whenever rewarded/interstitial readiness may have changed, so UI can
 ## hide/show ad-gated buttons live instead of showing a button that can't work
 ## (§3.6 applied everywhere, B14).
@@ -94,6 +96,11 @@ func is_rewarded_ready() -> bool:
 ## Shows a post-level interstitial if every §9.2 cap allows it, then calls
 ## `on_done`. Always calls `on_done` exactly once (fail-silent).
 func maybe_show_interstitial(level_number: int, on_done: Callable) -> void:
+	# Remove Ads IAP (E1): entitled players never see interstitials. Rewarded ads
+	# stay available — players opt into those for boosters/revives.
+	if has_remove_ads():
+		on_done.call()
+		return
 	var ads: Dictionary = SaveManager.data["ads"]
 	var state := {
 		"level_number": level_number,
@@ -221,6 +228,62 @@ func next_backoff(current: float) -> float:
 	if current <= 0.0:
 		return config.reload_backoff_min_s
 	return minf(current * 2.0, config.reload_backoff_max_s)
+
+# --- Remove Ads IAP (E1) ----------------------------------------------------
+# One-time non-consumable that removes interstitials only. Entitlement is stored
+# in the save file and re-verified on restore. Google Play Billing is behind a
+# _has_billing() seam exactly like the ad plugin; on desktop/editor the stub
+# grants immediately so the flow is testable without a store.
+
+const REMOVE_ADS_SKU := "remove_ads"
+const REMOVE_ADS_PRICE := "$2.99"  # display-only default; the store is source of truth
+
+func has_remove_ads() -> bool:
+	return bool(SaveManager.data["entitlements"].get("remove_ads", false))
+
+func purchase_remove_ads(on_done := Callable()) -> void:
+	if has_remove_ads():
+		if on_done.is_valid():
+			on_done.call()
+		return
+	if _has_billing():
+		_billing_purchase(REMOVE_ADS_SKU, on_done)
+		return
+	# Desktop/editor stub: grant so the UI can be exercised (no real charge exists).
+	_grant_remove_ads()
+	if on_done.is_valid():
+		on_done.call()
+
+func restore_purchases() -> void:
+	if _has_billing():
+		_billing_restore()
+
+func _grant_remove_ads() -> void:
+	SaveManager.data["entitlements"]["remove_ads"] = true
+	SaveManager.save_game()
+	purchases_updated.emit()
+
+func _has_billing() -> bool:
+	return Engine.has_singleton("GodotGooglePlayBilling")
+
+func _billing() -> Object:
+	return Engine.get_singleton("GodotGooglePlayBilling") if _has_billing() else null
+
+func _billing_purchase(sku: String, _on_done: Callable) -> void:
+	var b := _billing()
+	if b:
+		b.call("purchase", sku)   # entitlement is granted in the purchase callback
+
+func _billing_restore() -> void:
+	var b := _billing()
+	if b:
+		b.call("queryPurchases", "inapp")
+
+## Wire in _init_plugin on Android: on a validated purchase / restored entitlement
+## for REMOVE_ADS_SKU, call this to persist and broadcast it.
+func _on_billing_purchase_confirmed(sku: String) -> void:
+	if sku == REMOVE_ADS_SKU:
+		_grant_remove_ads()
 
 # --- Plugin integration hooks (poing-studios AdMob) -------------------------
 # These are the only spots that touch the plugin. They are inert until the

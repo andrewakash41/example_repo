@@ -135,6 +135,7 @@ var _slow_mo_mult := 1.0
 var _consumed_boosters: Dictionary = {}   # what consume_equipped took this level (B6)
 var _boosters_refunded := false           # guard so a run refunds at most once (B6)
 var _skin
+var _trail_style                          # equipped Trails.Trail (E6)
 
 func set_router(router: Node) -> void:
 	_router = router
@@ -143,7 +144,11 @@ func _ready() -> void:
 	_idle_bounce_v = sqrt(2.0 * GRAVITY_IDLE * IDLE_BOUNCE_HEIGHT)
 	_hard_bounce_v = sqrt(2.0 * GRAVITY_IDLE * (HARD_BOUNCE_GAPS * PLATFORM_GAP))
 
-	_level = LevelLoader.load_level(GameState.current_level)
+	# Weekly Challenge (E5) loads its own seeded tower; campaign loads by number.
+	if GameState.weekly_mode and GameState.weekly_level != null:
+		_level = GameState.weekly_level
+	else:
+		_level = LevelLoader.load_level(GameState.current_level)
 	_platform_count = _level.platform_count
 	_segment_count = _level.segment_count
 	_seg_angle = TAU / float(_segment_count)
@@ -156,6 +161,7 @@ func _ready() -> void:
 	_lite = bool(SaveManager.data["settings"].get("lite_fx", false))
 	Haptics.enabled = bool(SaveManager.data["settings"].get("haptics", true))
 	_skin = Skins.get_skin(SaveManager.data["equipped_skin"])
+	_trail_style = Trails.get_trail(SaveManager.data.get("equipped_trail", "none"))  # E6
 
 	# Consume equipped boosters at level start and apply their effects (§7.1).
 	# Consuming at start is the anti-exploit choice; unused ones are refunded when
@@ -568,6 +574,7 @@ func _start_fever() -> void:
 	if _fever_flame:
 		_fever_flame.emitting = true
 	_shake = SHAKE_FEVER
+	SaveManager.data["lifetime_ext"]["fever_triggers"] += 1  # E4 mission counter
 	_hud.flash(Color(1, 0.9, 0.6), 0.5)
 	Haptics.heavy()
 	AudioManager.play_sfx(&"fever")
@@ -794,6 +801,16 @@ func _on_level_clear() -> void:
 	_cleared = true
 	_ball.visible = true
 	_ball.position.y = _finish_y() + BALL_RADIUS + 0.15
+	Haptics.heavy()
+	AudioManager.play_sfx(&"level_clear")
+	if _confetti:
+		_confetti.restart()
+		_confetti.emitting = true
+	_shake = SHAKE_FEVER
+	_hud.flash(Color(0.4, 1, 0.7), 0.4)
+	if GameState.weekly_mode:
+		_on_weekly_clear()
+		return
 	var cleared_level := GameState.current_level
 	_cleared_level = cleared_level
 	AdManager.notify_level_completed()
@@ -802,23 +819,38 @@ func _on_level_clear() -> void:
 	var prev_best := SaveManager.get_best_score(cleared_level)
 	var new_best := GameState.run_score > prev_best
 	SaveManager.record_best_score(cleared_level, GameState.run_score)
-	SaveManager.data["lifetime"]["levels_cleared"] += 1
+	var replay := GameState.replay_mode  # E3
 	# +1 crate progress normally; a boss clear grants an instant crate (§7.2).
+	# Replays pay half (min 1) and don't touch progression or mission counters.
 	var gain := 5 if _level.is_boss else 1
+	if replay:
+		gain = maxi(1, gain / 2)
 	_last_clear_gain = gain  # B12: 2x-crate ad doubles the *actual* gain
 	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + gain
-	Boosters.on_level_clear(SaveManager.data)  # periodic free shield (§7.1)
-	GameState.advance_level()                  # unlock the next level
+	# Daily streak: first clear of the day tops up crate progress (E2).
+	var streak_bonus := DailyStreak.on_first_clear_today(SaveManager.data, Time.get_date_string_from_system())
+	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + streak_bonus
+	if not replay:
+		SaveManager.data["lifetime"]["levels_cleared"] += 1
+		if _level.is_boss:
+			SaveManager.data["lifetime_ext"]["bosses_cleared"] += 1  # E4 mission counter
+		Boosters.on_level_clear(SaveManager.data)  # periodic free shield (§7.1)
+		GameState.advance_level()                  # unlock the next level
 	SaveManager.save_game()                    # persist on level clear (§8.3)
-	Haptics.heavy()
-	AudioManager.play_sfx(&"level_clear")
+	_hud.show_level_clear(cleared_level, GameState.run_score,
+		SaveManager.get_best_score(cleared_level), new_best)
+
+## Weekly Challenge clear (E5): record the weekly best, grant a small crate reward,
+## and offer only HOME/RETRY — there is no "next" level in this mode.
+func _on_weekly_clear() -> void:
+	var key := WeeklyChallenge.week_key(Time.get_unix_time_from_system())
+	var new_best := WeeklyChallenge.record_best(SaveManager.data, key, GameState.run_score)
+	SaveManager.data["crate_progress"] = int(SaveManager.data["crate_progress"]) + 2
+	SaveManager.save_game()
 	if _confetti:
 		_confetti.restart()
 		_confetti.emitting = true
-	_shake = SHAKE_FEVER
-	_hud.flash(Color(0.4, 1, 0.7), 0.4)
-	_hud.show_level_clear(cleared_level, GameState.run_score,
-		SaveManager.get_best_score(cleared_level), new_best)
+	_hud.show_game_over(GameState.run_score, WeeklyChallenge.best_for(SaveManager.data, key))
 
 # --- Visuals / HUD ----------------------------------------------------------
 
@@ -843,10 +875,15 @@ func _apply_phase_visuals() -> void:
 		_forecast_mat.emission = nxt
 	if _trail and _trail.process_material:
 		var pm := _trail.process_material as ParticleProcessMaterial
-		pm.color = c
-		# Trail doubles in width during Fever (§6.3).
-		pm.scale_min = 1.0 if _fever else 0.5
-		pm.scale_max = 1.8 if _fever else 0.9
+		# Equipped trail style (E6): its own colour blended toward the phase colour
+		# by phase_tint (readability preserved), scaled by its width/energy.
+		var w: float = _trail_style.width if _trail_style else 1.0
+		var tint: float = _trail_style.phase_tint if _trail_style else 1.0
+		# tint 1 = pure phase colour; lower blends toward white for a softer trail.
+		pm.color = Color.WHITE.lerp(c, tint)
+		# Trail doubles in width during Fever (§6.3), then scaled by the style.
+		pm.scale_min = (1.0 if _fever else 0.5) * w
+		pm.scale_max = (1.8 if _fever else 0.9) * w
 	if _hud:
 		_hud.set_phase(PSTypes.phase_color(_phase))
 
@@ -899,6 +936,8 @@ func _update_phase_ring(ratio: float, warning: bool) -> void:
 
 func _on_home() -> void:
 	Engine.time_scale = 1.0
+	GameState.weekly_mode = false  # leave weekly mode on return to Home (E5)
+	GameState.replay_mode = false  # and replay mode (E3)
 	# Quitting mid-run without popping the shield shouldn't cost it (B6). A clear
 	# already refunded/kept via _on_level_clear; this covers abandon-to-home.
 	if not _cleared:
