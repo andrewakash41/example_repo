@@ -26,3 +26,9 @@ func clear_level() -> void:
 
 func die() -> void:
 	ball_died.emit(current_level)
+
+## Advance to the next level and remember the furthest reached.
+func advance_level() -> void:
+	current_level += 1
+	if current_level > int(SaveManager.data["highest_level"]):
+		SaveManager.data["highest_level"] = current_level

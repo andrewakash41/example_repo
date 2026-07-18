@@ -9,22 +9,30 @@ See [`../PHASE_SMASH_HANDOFF.md`](../PHASE_SMASH_HANDOFF.md) for the full design
 and the milestone plan (P0–P7). Executor decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
-## Status — P0 (Scaffold)
+## Status — P1 (Core mechanic complete)
 
-Playable greybox:
+The full core loop from §3 is in:
 
-- Rotating 30-platform segmented tower (data-driven, seeded/deterministic).
-- Single scripted ball: **hold to smash** through solid segments, **release**
-  to idle-bounce on the nearest surface. Gaps fall through.
-- Segment shatter debris (script-driven, no physics bodies).
-- Camera follow (~35° down) with smoothing.
-- HUD: descent progress + score + control hint; level-clear panel at the base.
-- Autoload skeletons (GameState, SaveManager, AudioManager, Haptics,
-  LevelLoader, AdManager) with the API surface later phases fill in.
+- **Phase system**: ball is Phase A (amber) / B (azure); material + light reflect
+  it; a phase bar depletes over the phase duration and pulses ~0.5s before the
+  flip, then flips with flash + haptic. Timer pauses while smash-descending so
+  deep dives don't flip unfairly.
+- **Four segment kinds** (amber / azure / obsidian / gap) with all §3.3–3.4
+  interactions: matching+smash → shatter, opposite+smash → hard bounce (kick up,
+  combo reset, input lockout), obsidian+smash → death, idle-bounce safe on any
+  solid.
+- **Fever**: 10 in one hold → smash everything (incl. obsidian/opposite),
+  white-hot ball, +5° FOV, hold + 1.5s grace.
+- **Death + revive**: slow-mo, ball shatter, tower dims, once-per-level revive
+  with a 5s countdown and a **stubbed rewarded ad** (real AdMob is P5); 1.5s
+  invulnerability on resume.
+- **Scoring/combo**: +1 × combo (1 + chain/10, capped ×5); best + lifetime
+  stored (in-memory until P4).
+- Level clear → tally + crate progress; NEXT advances the level.
 
-**Not yet present** (by design — later milestones): phases/colors, obsidian,
-fever, revive, real art/juice/audio, boosters/crates/skins, save persistence,
-ads/consent.
+**Not yet** (later milestones): the authored 50-level curve + procedural/boss
+(P2), real art/juice/audio (P3), boosters/crates/skins + persistent save (P4),
+ads/consent (P5).
 
 ## Project layout
 

@@ -12,7 +12,8 @@ var data: Dictionary = {
 	"save_version": SAVE_VERSION,
 	"highest_level": 1,
 	"best_scores": {},        # {level_number(str): best_score}
-	"lifetime": {"levels_cleared": 0, "segments_smashed": 0},
+	"lifetime": {"levels_cleared": 0, "segments_smashed": 0, "deaths": 0},
+	"crate_progress": 0,
 	"settings": {"music": true, "sfx": true, "haptics": true, "lite_fx": false},
 }
 
