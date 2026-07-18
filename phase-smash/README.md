@@ -9,6 +9,21 @@ See [`../PHASE_SMASH_HANDOFF.md`](../PHASE_SMASH_HANDOFF.md) for the full design
 and the milestone plan (P0–P7). Executor decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
+## Status — P7 (Release pack)
+
+On top of P6, all the non-device release artifacts are prepared:
+
+- **Build**: `docs/export_presets.cfg.example` (Android AAB, adaptive icon,
+  minSdk 26) + `docs/RELEASE.md` (keystore `keytool`, CLI export, versionCode
+  bump).
+- **Store**: `docs/store/` — listing copy, privacy-policy HTML template, Data
+  Safety + content-rating answer sheets, screenshots/video shot list.
+- **Graphics**: `assets/store/icon_512.svg`, `assets/store/feature_graphic.svg`.
+
+Device-only steps remain (by design, §9/§P7): build + install the signed AAB,
+capture screenshots/video, on-device 60fps + airplane-mode + memory-soak
+verification, and the AdMob plugin wiring with real IDs.
+
 ## Status — P6 (Hardening)
 
 On top of P5:

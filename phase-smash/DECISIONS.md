@@ -186,3 +186,22 @@ rationale each. Newest at top within a phase.
   kept inside the launcher safe zone; wired via the export preset in P7.
 - **`keep_screen_on` + versioned** (`config/version`); boot splash off for a
   fast cold start.
+
+## P7 — Release pack
+
+- **Everything that doesn't require the device is prepared as an artifact**:
+  Android export preset (`docs/export_presets.cfg.example`), `docs/RELEASE.md`
+  (keystore `keytool` command, CLI AAB export, versionCode bump rule), store
+  listing copy (title ≤30 / short ≤80 / full), privacy-policy HTML template,
+  Data Safety + content-rating answer sheets, 512 icon + 1024×500 feature
+  graphic (SVG, export to PNG), and a screenshots/video shot list.
+- **`export_presets.cfg` stays gitignored** (it references the local keystore
+  path); the committed file is the `.example` template to copy + open once in
+  the editor so Godot fills managed fields.
+- **`target_sdk` intentionally left blank** in the template — it must be set to
+  Google Play's current minimum at build time, which ratchets annually (§8.5);
+  hardcoding it would silently go stale.
+- **Device-only acceptance remains open by design** (§ P7 accept): building and
+  installing the signed AAB, capturing the 6+ screenshots and 30s video, and the
+  on-device run. These need Godot 4.3 + Android tooling + a phone, none of which
+  were available in this environment.

@@ -1,0 +1,49 @@
+; Example Android export preset for Phase Smash.
+;
+; Copy this to the project root as `export_presets.cfg` (it is gitignored so the
+; real one — which references your keystore path — never gets committed), then
+; OPEN IT ONCE IN THE GODOT EDITOR (Project > Export) to let Godot fill in the
+; managed fields and validate the Android SDK/keystore setup. The values below
+; are a correct starting point.
+;
+; Prerequisites (one-time):
+;   - Install the Android build template + set the Android SDK path in
+;     Editor Settings (Export > Android).
+;   - Enable "Use Gradle Build" (required for AAB + adaptive icons).
+;   - Generate the upload keystore (see docs/RELEASE.md) and point the
+;     RELEASE keystore fields at it. Passwords are entered in the editor /
+;     environment, NOT stored here.
+
+[preset.0]
+
+name="Android AAB (release)"
+platform="Android"
+runnable=false
+export_filter="all_resources"
+export_path="builds/phase-smash.aab"
+
+[preset.0.options]
+
+gradle_build/use_gradle_build=true
+gradle_build/export_format=0        ; 0 = AAB, 1 = APK
+package/unique_name="com.andrew.phasesmash"
+package/name="Phase Smash"
+version/code=1                       ; bump every upload (see RELEASE.md)
+version/name="0.6.0"
+gradle_build/min_sdk="26"            ; Android 8.0 (§8.5)
+gradle_build/target_sdk=""           ; leave blank => Godot default; VERIFY it
+                                     ; meets Google Play's current requirement
+                                     ; at build time (ratchets annually, §8.5)
+screen/immersive_mode=true
+screen/support_small=true
+screen/support_normal=true
+screen/support_large=true
+screen/support_xlarge=true
+
+; Adaptive launcher icon (§ P6). Godot rasterizes these SVGs on export.
+launcher_icons/main_192x192="res://assets/store/icon_512.svg"
+launcher_icons/adaptive_foreground_432x432="res://assets/textures/icon_foreground.svg"
+launcher_icons/adaptive_background_432x432="res://assets/textures/icon_background.svg"
+
+; AdMob app id is declared in the Android manifest by the poing-studios plugin
+; using the value in data/ad_config.tres (§9.1) — nothing to set here.
