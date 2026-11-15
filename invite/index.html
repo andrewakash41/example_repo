@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Free Invitation Maker for WhatsApp — Wedding, Birthday, Griha Pravesh</title>
+  <meta name="description" content="Make a beautiful wedding, engagement, birthday or housewarming invitation in a minute. Download the card, share it on WhatsApp, and collect RSVPs. No app, no sign-up.">
+  <meta property="og:title" content="Free Invitation Maker for WhatsApp">
+  <meta property="og:description" content="Wedding, birthday and housewarming invitation cards with a live RSVP link. Ready in a minute.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#7a1f2b">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%237a1f2b'/%3E%3Cpath d='M32 10l5.5 16.5L54 32l-16.5 5.5L32 54l-5.5-16.5L10 32l16.5-5.5z' fill='%23f0d488'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./"><span class="star" aria-hidden="true">✦</span><span data-brand></span></a>
+    <button id="premiumBtn" class="pill" type="button">Go Premium</button>
+  </header>
+
+  <section class="hero">
+    <h1>Invitations your guests will love, ready for WhatsApp in a minute</h1>
+    <p>Pick a design, type your details, share. No app, no sign-up, and your details never leave your phone.</p>
+  </section>
+
+  <main class="studio">
+    <section class="pick" aria-label="Choose event and design">
+      <h2 class="step"><span>1</span> What are you celebrating?</h2>
+      <div id="types" class="chips" role="radiogroup" aria-label="Event type"></div>
+      <h2 class="step"><span>2</span> Pick a design</h2>
+      <div id="templates" class="templates" role="radiogroup" aria-label="Design"></div>
+    </section>
+
+    <aside class="preview" aria-label="Preview">
+      <div class="card-wrap"><canvas id="preview" width="540" height="756" role="img" aria-label="Invitation preview"></canvas></div>
+      <p id="status" class="status"></p>
+      <div class="actions">
+        <button id="download" class="btn primary" type="button">Download</button>
+        <button id="share" class="btn whatsapp" type="button">Share</button>
+        <button id="copyLink" class="btn ghost" type="button">Copy link</button>
+      </div>
+    </aside>
+
+    <form class="form" id="form" autocomplete="off" onsubmit="return false">
+      <h2 class="step"><span>3</span> Add your details</h2>
+
+      <fieldset>
+        <legend>Who</legend>
+        <label><span id="n1Label">Name</span><input data-f="n1" maxlength="60"></label>
+        <div class="row pair-only">
+          <label class="narrow"><span>Joined by</span><input data-f="jn" maxlength="20" list="joiners"></label>
+          <label><span>Partner's name</span><input data-f="n2" maxlength="60"></label>
+        </div>
+        <datalist id="joiners"><option value="weds"><option value="&amp;"><option value="and"><option value="संग"></datalist>
+      </fieldset>
+
+      <fieldset>
+        <legend>Wording</legend>
+        <label><span>Blessing line <em>optional</em></span><input data-f="bl" maxlength="80" list="blessings"></label>
+        <datalist id="blessings"></datalist>
+        <label><span>Opening line</span><input data-f="in" maxlength="120"></label>
+        <label><span>Message</span><textarea data-f="ms" rows="3" maxlength="400"></textarea></label>
+        <label><span>Closing line <em>optional</em></span><input data-f="ft" maxlength="140"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>When</legend>
+        <div class="row">
+          <label><span>Date</span><input data-f="dt" type="date"></label>
+          <label><span>Time</span><input data-f="tm" type="time"></label>
+        </div>
+        <label><span>Show date in</span><select data-f="lg" id="lang"></select></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Where</legend>
+        <label><span>Venue</span><input data-f="vn" maxlength="100"></label>
+        <label><span>Address</span><input data-f="va" maxlength="240"></label>
+        <label><span>Google Maps link <em>optional</em></span><input data-f="ml" type="url" inputmode="url" maxlength="400" placeholder="https://maps.app.goo.gl/…"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>RSVP</legend>
+        <p class="hint">Guests who open your invitation link can reply to this WhatsApp number in one tap.</p>
+        <div class="row">
+          <label><span>Host name</span><input data-f="hn" maxlength="60"></label>
+          <label><span>WhatsApp number</span><input data-f="ph" type="tel" inputmode="tel" maxlength="16" placeholder="98765 43210"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Functions <span class="tag">Premium</span></legend>
+        <p class="hint">Haldi, Mehendi, Sangeet, Reception: list every function on your invitation link.</p>
+        <div id="events"></div>
+        <button id="addEvent" class="btn ghost small" type="button">+ Add a function</button>
+      </fieldset>
+    </form>
+  </main>
+
+  <section class="band" id="how">
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><b>Design</b>Choose a card and type your details. The preview updates as you type.</li>
+      <li><b>Share</b>Send the card on WhatsApp, or share a link that opens the invitation with a countdown.</li>
+      <li><b>Collect RSVPs</b>Guests tap once to reply on WhatsApp, open the venue in Maps, or save the date to their calendar.</li>
+    </ol>
+  </section>
+
+  <section class="band premium" id="premium">
+    <h2><span data-brand></span> Premium</h2>
+    <p class="lead">One payment of <b data-price></b>. Yours for every invitation you make.</p>
+    <div class="compare">
+      <div>
+        <h3>Free</h3>
+        <ul>
+          <li>3 designs</li>
+          <li>Card download and WhatsApp sharing</li>
+          <li>Invitation link with RSVP, map and calendar</li>
+          <li>Small “Made with” strip on the card</li>
+        </ul>
+      </div>
+      <div class="best">
+        <h3>Premium <span data-price></span></h3>
+        <ul>
+          <li>All 8 designs, including 5 premium ones</li>
+          <li>No branding on the card or the link</li>
+          <li>Print-quality HD download</li>
+          <li>Full schedule of functions on your link</li>
+        </ul>
+        <button class="btn primary" type="button" data-unlock>Unlock Premium</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <h2>Questions</h2>
+    <details><summary>Do my guests need an app?</summary><p>No. The card is a normal image and the invitation link opens in any phone browser.</p></details>
+    <details><summary>Where are my details stored?</summary><p>On your own device. Nothing is uploaded: the invitation link carries the details inside the link itself.</p></details>
+    <details><summary>Can I write in Hindi or another language?</summary><p>Yes. Type in any language, and choose the language the date is shown in.</p></details>
+    <details><summary>How does Premium work?</summary><p>Pay once, send your payment confirmation on WhatsApp, and you receive a Premium key linked to your RSVP WhatsApp number. Enter it once and every invitation you make with that number is Premium.</p></details>
+  </section>
+
+  <footer class="foot">
+    <span>© <span data-brand></span></span>
+    <a href="legal.html">Privacy, terms &amp; refunds</a>
+  </footer>
+
+  <dialog id="unlock" aria-labelledby="unlockTitle">
+    <form method="dialog"><button class="close" aria-label="Close">×</button></form>
+    <h2 id="unlockTitle">Unlock Premium · <span data-price></span></h2>
+    <p class="lead">One-time payment. All designs, no branding, HD download, full schedule.</p>
+
+    <ol class="pay">
+      <li>
+        <b>Your RSVP WhatsApp number</b>
+        <p class="hint">Your Premium key is linked to this number. It is the number guests reply to.</p>
+        <input id="unlockPhone" type="tel" inputmode="tel" maxlength="16" placeholder="98765 43210" aria-label="RSVP WhatsApp number">
+      </li>
+      <li>
+        <b>Pay <span data-price></span></b>
+        <div id="payOptions"></div>
+      </li>
+      <li>
+        <b>Send your payment confirmation</b>
+        <p class="hint">We reply with your Premium key, usually within a few hours.</p>
+        <a id="confirmPay" class="btn whatsapp" target="_blank" rel="noopener">Send on WhatsApp</a>
+      </li>
+      <li>
+        <b>Enter your Premium key</b>
+        <textarea id="keyInput" rows="3" placeholder="NY1.…" aria-label="Premium key" spellcheck="false"></textarea>
+        <p id="keyError" class="error" role="alert"></p>
+        <button id="activate" class="btn primary" type="button">Activate</button>
+      </li>
+    </ol>
+  </dialog>
+
+  <script src="vendor/qrcode.js"></script>
+  <script type="module" src="js/editor.js"></script>
+</body>
+</html>

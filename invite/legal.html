@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy, terms and refunds</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top"><a class="brand" href="./"><span class="star" aria-hidden="true">✦</span><span data-brand></span></a></header>
+  <main class="doc">
+    <h1>Privacy, terms and refunds</h1>
+
+    <h2>Privacy</h2>
+    <p><span data-brand></span> has no accounts and no tracking. The invitation you create is saved only in your own browser so you can continue later.</p>
+    <p>When you share an invitation link, your details are carried inside the link itself and are read by the browser of whoever opens it. They are not uploaded to or stored on our servers. Anyone who has the link can see the invitation, so share it only with your guests.</p>
+    <p>If you buy Premium, we receive the payment details shown by your payment app and the WhatsApp number you ask us to link your key to. We use these only to issue your key and to help you if something goes wrong.</p>
+
+    <h2>Terms</h2>
+    <p>You are responsible for the text you put on your invitations and for having the right to use any names and details you include. Do not use <span data-brand></span> for unlawful, misleading or abusive content.</p>
+    <p>Premium is a one-time purchase linked to one RSVP WhatsApp number. It unlocks all designs, removes branding and enables HD download and the functions schedule for invitations that use that number.</p>
+    <p>The service is provided as is. We work to keep it available, but cannot promise it will be uninterrupted or error-free.</p>
+
+    <h2>Refunds</h2>
+    <p>If Premium does not work for you, contact us within 7 days of payment and we will fix the problem or refund you in full.</p>
+
+    <h2>Contact</h2>
+    <p id="contact">Contact details will be listed here.</p>
+  </main>
+  <script type="module">
+    import config from './config.js';
+    import { applyBrand, el } from './js/ui.js';
+    applyBrand();
+    const links = [];
+    if (config.sellerWhatsApp) links.push(el('a', { href: `https://wa.me/${config.sellerWhatsApp}`, text: `WhatsApp +${config.sellerWhatsApp}` }));
+    if (config.supportEmail) links.push(el('a', { href: `mailto:${config.supportEmail}`, text: config.supportEmail }));
+    if (links.length) document.querySelector('#contact').replaceChildren(...links.flatMap((a, i) => (i ? [' · ', a] : [a])));
+  </script>
+</body>
+</html>

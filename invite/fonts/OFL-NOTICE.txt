@@ -1,0 +1,3 @@
+The font files in this folder are redistributed under the SIL Open Font License 1.1
+(https://openfontlicense.org): Great Vibes, Cormorant Garamond, Cinzel, Montserrat,
+Baloo 2 and Tiro Devanagari Hindi, copyright their respective project authors.

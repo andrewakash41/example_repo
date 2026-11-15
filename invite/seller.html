@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Seller desk</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top"><a class="brand" href="./"><span class="star" aria-hidden="true">✦</span><span data-brand></span></a></header>
+  <main class="doc">
+    <h1>Seller desk</h1>
+    <p>Issue Premium keys after a buyer pays. Everything here runs on this device; your signing key is never uploaded.</p>
+
+    <h2>1. Your signing key</h2>
+    <div class="panel">
+      <p id="keyStatus"></p>
+      <button id="importBtn" class="btn primary" type="button">Load key file</button>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+      <button id="createBtn" class="btn ghost" type="button">Create a new key</button>
+      <button id="forgetBtn" class="btn ghost" type="button" hidden>Remove key from this device</button>
+      <div id="newKey" hidden>
+        <p class="warn">New key created and its backup file downloaded. Keep that file safe and private.</p>
+        <p>To start using it, set this value as <b>licensePublicKey</b> in <b>config.js</b> and redeploy. Keys issued with an older signing key stop working.</p>
+        <output id="newPublic"></output>
+        <button id="copyPublic" class="btn ghost small" type="button">Copy</button>
+      </div>
+    </div>
+
+    <h2>2. Issue a Premium key</h2>
+    <div class="panel">
+      <label><span>Buyer's RSVP WhatsApp number (with country code)</span>
+        <input id="buyer" type="tel" inputmode="tel" placeholder="91 98765 43210" maxlength="18"></label>
+      <button id="issue" class="btn primary" type="button">Create key</button>
+      <p id="issueError" class="warn" role="alert"></p>
+      <div id="issued" hidden>
+        <output id="issuedKey"></output>
+        <button id="copyKey" class="btn ghost small" type="button">Copy key</button>
+        <a id="sendKey" class="btn whatsapp small" target="_blank" rel="noopener">Send on WhatsApp</a>
+      </div>
+    </div>
+
+    <h2>Sales on this device</h2>
+    <div class="panel">
+      <p id="salesEmpty">No keys issued yet.</p>
+      <table id="sales" hidden><thead><tr><th>Date</th><th>Number</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </main>
+  <script type="module" src="js/seller.js"></script>
+</body>
+</html>
