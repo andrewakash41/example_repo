@@ -1,0 +1,40 @@
+{
+  "name": "sahicv",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/copy-fonts.mjs && tsc --noEmit && vite build",
+    "preview": "wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/copy-fonts.mjs",
+    "test": "vitest run",
+    "fonts": "node scripts/copy-fonts.mjs",
+    "predev": "node scripts/copy-fonts.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "docx": "^9.15.4",
+    "jspdf": "^4.2.1",
+    "pdfjs-dist": "^6.5.438",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@expo-google-fonts/eb-garamond": "^0.4.3",
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/lato": "^0.4.1",
+    "@expo-google-fonts/source-serif-4": "^0.4.2",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.162.0"
+  }
+}

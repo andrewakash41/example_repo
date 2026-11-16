@@ -1,0 +1,27 @@
+# Copy this file to .dev.vars for local development. Never commit .dev.vars.
+# On Cloudflare, add the same names under Settings > Variables and Secrets.
+
+# --- Local development only: stand-in AI and fake payments ---
+ALLOW_MOCK=true
+
+# --- Signing key for passes (required). Any long random string, 32+ characters ---
+LICENSE_SECRET=change-me-to-a-long-random-string-0123456789
+
+# --- AI providers: add at least one key. They are tried in this order ---
+# AI_PROVIDERS=gemini,groq
+# GEMINI_API_KEY=
+# GEMINI_MODEL=gemini-3.5-flash-lite
+# GROQ_API_KEY=
+# GROQ_MODEL=openai/gpt-oss-120b
+# OPENROUTER_API_KEY=
+# OPENROUTER_MODEL=
+# ANTHROPIC_API_KEY=
+# ANTHROPIC_MODEL=claude-opus-5-5
+
+# --- Razorpay (from Dashboard > Account & Settings > API Keys) ---
+# RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
+# RAZORPAY_KEY_SECRET=
+# ENABLE_USD=false
+
+# --- Protects the setup check at /api/health?token=... ---
+# ADMIN_TOKEN=
