@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cockpit Launcher</string>
+    <string name="media_listener_label">Cockpit Launcher music controls</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="tap_play">Press play to resume your last player</string>
+    <string name="music_access_title">Enable music controls</string>
+    <string name="music_access_sub">Tap to grant notification access</string>
+    <string name="search_apps">Search apps</string>
+</resources>
