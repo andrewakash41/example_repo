@@ -47,10 +47,10 @@ class SettingsActivity : Activity() {
                 }.show()
         }
         row("Android Auto tile", appName(Prefs.autoPkg) ?: "Automatic (Headunit Revived when installed)") {
-            Apps.pick(this, "App for the Android Auto tile") { Prefs.autoPkg = it.component.packageName; build() }
+            Apps.pick(this, "App for the Android Auto tile") { Prefs.autoPkg = it; build() }
         }
         row("Navigate tile", appName(Prefs.navPkg) ?: "Google Maps") {
-            Apps.pick(this, "App for the Navigate tile") { Prefs.navPkg = it.component.packageName; build() }
+            Apps.pick(this, "App for the Navigate tile") { Prefs.navPkg = it; build() }
         }
         row("Music controls", "Grant notification access so the home screen can show what is playing") {
             if (!Apps.start(this, Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))) {

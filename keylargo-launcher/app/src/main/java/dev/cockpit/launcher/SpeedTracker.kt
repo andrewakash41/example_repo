@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import java.util.Locale
 
 /**
  * GPS speed, trip distance and satellite status. Everything stays in memory on the device
@@ -55,6 +56,8 @@ object SpeedTracker {
                 val dt = (loc.elapsedRealtimeNanos - prev.elapsedRealtimeNanos) / 1e9f
                 if (dt > 0.2f) v = prev.distanceTo(loc) / dt
             }
+            // A position jump can produce an absurd computed speed; ignore anything above 360 km/h.
+            if (v.isNaN() || v > 100f) v = speedMps
             // Receivers report 0.2-0.8 m/s of jitter while parked; treat that as standing still.
             if (v < 0.7f) v = 0f
             speedMps = v
@@ -111,9 +114,15 @@ object SpeedTracker {
     }
 
     // Once a second, so the UI notices when fixes stop arriving.
+    private var savedTrip = 0f
     private val heartbeat = object : Runnable {
         override fun run() {
             if (!hasFix) speedMps = 0f
+            // Head units lose power abruptly with the ignition, so save the trip as it grows.
+            if (tripMeters - savedTrip >= 200f) {
+                savedTrip = tripMeters
+                Prefs.tripMeters = tripMeters
+            }
             notifyAll0()
             main.postDelayed(this, 1000)
         }
@@ -138,6 +147,7 @@ object SpeedTracker {
         }
         lm = m
         if (tripMeters == 0f) tripMeters = Prefs.tripMeters
+        savedTrip = tripMeters
         running = true
         main.postDelayed(heartbeat, 1000)
     }
@@ -158,6 +168,7 @@ object SpeedTracker {
 
     fun resetTrip() {
         tripMeters = 0f
+        savedTrip = 0f
         maxMps = 0f
         last = null
         Prefs.tripMeters = 0f
@@ -178,7 +189,7 @@ object SpeedTracker {
     fun toUnit(mps: Float): Float = mps * if (Prefs.mph) 2.23694f else 3.6f
     val unit: String get() = if (Prefs.mph) "mph" else "km/h"
     fun distance(m: Float): String =
-        if (Prefs.mph) String.format("%.1f mi", m / 1609.344f) else String.format("%.1f km", m / 1000f)
+        if (Prefs.mph) String.format(Locale.US, "%.1f mi", m / 1609.344f) else String.format(Locale.US, "%.1f km", m / 1000f)
 
     fun compass(): String {
         if (bearing < 0) return ""

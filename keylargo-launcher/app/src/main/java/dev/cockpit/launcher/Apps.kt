@@ -60,11 +60,17 @@ object Apps {
 
     fun toast(c: Context, msg: String) = Toast.makeText(c, msg, Toast.LENGTH_LONG).show()
 
-    fun pick(c: Context, title: String, onPick: (AppEntry) -> Unit) {
-        val apps = load(c)
+    /** App chooser. Reads labels only, so it opens without decoding every icon on the UI thread. */
+    fun pick(c: Context, title: String, onPick: (packageName: String) -> Unit) {
+        val pm = c.packageManager
+        val main = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val apps = pm.queryIntentActivities(main, 0)
+            .filter { it.activityInfo.packageName != c.packageName }
+            .map { it.loadLabel(pm).toString() to it.activityInfo.packageName }
+            .sortedBy { it.first.lowercase() }
         AlertDialog.Builder(c)
             .setTitle(title)
-            .setItems(apps.map { it.label }.toTypedArray()) { _, i -> onPick(apps[i]) }
+            .setItems(apps.map { it.first }.toTypedArray()) { _, i -> onPick(apps[i].second) }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }

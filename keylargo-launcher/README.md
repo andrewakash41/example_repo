@@ -35,6 +35,12 @@ any Android 8.0+ head unit.
   (`MediaListener.kt`).
 - The Hidden screens browser only opens screens that Android already lets any app open.
   It does not bypass passwords or permissions.
+- The launcher never reads data sent to it by other apps, and its only component other
+  apps can reach is the home screen itself.
+- Every CI build fails if the APK requests any permission outside the list below, and
+  prints the APK's SHA-256 in the run summary so you can check your download
+  (`sha256sum app-release.apk`, or `certutil -hashfile app-release.apk SHA256` on
+  Windows). The build actions are pinned to exact commits.
 
 Permissions used: precise location (speed), location extra commands (GPS refresh), query
 all packages (it is a launcher), request delete packages (Uninstall menu item).
@@ -158,15 +164,23 @@ the head unit's receiver entirely.
 
 ## 6. YouTube "do not watch while driving" warning
 
-This is the video-in-motion safety lock, driven by the unit's parking-brake wire. I have
-not built a bypass and will not: video in the driver's view while moving is unsafe and
-illegal in most places, including under India's Motor Vehicles rules. What works:
+This project contains no bypass for it, and the launcher could not provide one anyway.
+The popup is drawn by the unit's own firmware when its parking-brake input says the car
+is moving. An ordinary app is not allowed to remove another component's overlay; doing so
+would need root or a patched system image, which is exactly the kind of bypass this
+launcher promises not to contain, and it would put the unit at risk of not booting.
 
-- Video plays normally when the handbrake is engaged (parked). If it is blocked even
-  when parked, the unit's brake wire is not connected properly, which an installer can
-  correct.
-- For audio while driving, use YouTube Music or another audio app; the music card on the
-  home screen controls it.
+Where the behaviour is actually controlled:
+
+- **The unit's own setting.** Firmware of this family has a brake-detection /
+  "video while driving" option in the stock or factory settings (section 3 shows how to
+  reach those menus). That is the manufacturer's switch for this popup.
+- **The parking-brake wire** on the unit's harness. If video is blocked even when
+  parked, that wire is not connected correctly, which an installer can correct.
+
+Video on a screen in the driver's view while the car is moving is unsafe and is an
+offence in most places, including under India's Motor Vehicles rules. For audio while
+driving, YouTube Music works and the home-screen music card controls it.
 
 ## What to report back
 

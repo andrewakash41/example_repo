@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.drawable.Drawable
 import android.media.MediaMetadata
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
@@ -28,6 +29,7 @@ class HomeActivity : Activity(), SpeedTracker.Listener {
     private lateinit var play: ImageButton
     private lateinit var dock: LinearLayout
     private lateinit var music: MusicHub
+    private var userAsked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +49,10 @@ class HomeActivity : Activity(), SpeedTracker.Listener {
         findViewById<View>(R.id.speedCard).apply {
             setOnClickListener {
                 if (SpeedTracker.hasPermission(this@HomeActivity)) startActivity(Intent(this@HomeActivity, GpsActivity::class.java))
-                else askLocation()
+                else {
+                    userAsked = true
+                    askLocation()
+                }
             }
             setOnLongClickListener {
                 SpeedTracker.resetTrip()
@@ -91,10 +96,20 @@ class HomeActivity : Activity(), SpeedTracker.Listener {
     override fun onBackPressed() {
     }
 
-    private fun askLocation() = requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+    private fun askLocation() = requestPermissions(
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1
+    )
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // After "Don't ask again" Android stops showing the prompt; send the user to the app's page.
+        if (userAsked && grantResults.isNotEmpty() && !SpeedTracker.hasPermission(this) &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
+        ) {
+            Apps.toast(this, "Open Permissions and allow Location")
+            Apps.start(this, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+        }
+        userAsked = false
         SpeedTracker.add(this, this)
         onSpeedUpdate()
     }
@@ -238,14 +253,14 @@ class HomeActivity : Activity(), SpeedTracker.Listener {
             .show()
     }
 
-    private fun chooseAuto() = Apps.pick(this, "App for the Android Auto tile") { Prefs.autoPkg = it.component.packageName }
+    private fun chooseAuto() = Apps.pick(this, "App for the Android Auto tile") { Prefs.autoPkg = it }
 
     private fun openNav() {
         val pkg = Prefs.navPkg ?: "com.google.android.apps.maps"
         if (!Apps.launchPackage(this, pkg)) chooseNav()
     }
 
-    private fun chooseNav() = Apps.pick(this, "App for the Navigate tile") { Prefs.navPkg = it.component.packageName }
+    private fun chooseNav() = Apps.pick(this, "App for the Navigate tile") { Prefs.navPkg = it }
 
     companion object {
         /** Known package names of the open-source Android Auto receiver. */

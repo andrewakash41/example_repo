@@ -1,6 +1,8 @@
 package dev.cockpit.launcher
 
 import android.app.Activity
+import android.app.AlertDialog
+import java.util.Locale
 import android.graphics.Typeface
 import android.os.Bundle
 import android.widget.Button
@@ -39,7 +41,14 @@ class GpsActivity : Activity(), SpeedTracker.Listener {
         })
         col.addView(Button(this).apply {
             text = "Full GPS reset (cold start, takes a few minutes outdoors)"
-            setOnClickListener { done(SpeedTracker.refreshAssistData(this@GpsActivity, true)) }
+            setOnClickListener {
+                AlertDialog.Builder(this@GpsActivity)
+                    .setTitle("Full GPS reset")
+                    .setMessage("The receiver forgets where the satellites are and needs 5 to 10 minutes under open sky to find them again. Do this parked, not on a trip.")
+                    .setPositiveButton("Reset") { _, _ -> done(SpeedTracker.refreshAssistData(this@GpsActivity, true)) }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
         })
         col.addView(TextView(this).apply {
             text = "Healthy reception: 8 or more satellites in use, signal above 30 dB-Hz and accuracy " +
@@ -87,10 +96,10 @@ class GpsActivity : Activity(), SpeedTracker.Listener {
         details.text = buildString {
             append("Satellites in use   ${t.satsUsed}\n")
             append("Satellites visible  ${t.satsVisible}\n")
-            append("Average signal      ${if (t.avgSignal > 0) String.format("%.0f dB-Hz", t.avgSignal) else "-"}\n")
+            append("Average signal      ${if (t.avgSignal > 0) String.format(Locale.US, "%.0f dB-Hz", t.avgSignal) else "-"}\n")
             append("Accuracy            ${if (t.hasFix && t.accuracyM >= 0) String.format("±%.0f m", t.accuracyM) else "-"}\n")
             append("Speed               ${Math.round(t.toUnit(t.speedMps))} ${t.unit}\n")
-            append("Altitude            ${if (t.altitudeM.isNaN()) "-" else String.format("%.0f m", t.altitudeM)}\n")
+            append("Altitude            ${if (t.altitudeM.isNaN()) "-" else String.format(Locale.US, "%.0f m", t.altitudeM)}\n")
             append("Last fix            ${if (t.fixAgeSec < 0) "never" else "${t.fixAgeSec} s ago"}")
         }
     }
